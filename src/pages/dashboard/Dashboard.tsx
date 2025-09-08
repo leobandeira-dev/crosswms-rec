@@ -5,7 +5,7 @@ import { subDays } from 'date-fns';
 import MainLayout from '../../components/layout/MainLayout';
 import DateRangeSelector from '../../components/dashboard/DateRangeSelector';
 import ConfigurableDashboard from '../../components/dashboard/ConfigurableDashboard';
-import { InlineHelp, QuickHelp } from '@/components/help/InlineHelp';
+import { InlineHelp, QuickHelp } from '../../components/help/InlineHelp';
 import { useLocation } from 'wouter';
 
 const Dashboard = () => {
