@@ -1,6 +1,9 @@
 
 import { useState } from 'react';
-import { toast } from './use-toast';
+// Temporary simple toast replacement
+const toast = (props: any) => {
+  console.log('Toast:', props.title, props.description);
+};
 import { authService } from '../services/authService';
 
 interface Usuario {
