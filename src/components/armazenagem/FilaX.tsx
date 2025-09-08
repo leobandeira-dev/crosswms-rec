@@ -385,7 +385,7 @@ const FilaX: React.FC = () => {
         });
       }, 1000); // Aguardar 1 segundo para dados carregarem
     }
-  }, [location]);
+  }, []);
 
   // Polling automático de dados SLA quando modal está aberto
   useEffect(() => {

@@ -51,7 +51,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon: Icon, label, href, children, ac
             <ChevronDown size={10} className="lg:w-3 lg:h-3" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56 bg-white border border-gray-200 rounded-xl shadow-xl">
+        <DropdownMenuContent className="w-56 bg-white rounded-xl">
           {children}
         </DropdownMenuContent>
       </DropdownMenu>
@@ -121,7 +121,7 @@ const TopNavbar: React.FC = () => {
   };
 
   return (
-    <nav className="crosswms-navbar sticky top-0 z-50 bg-white border-b border-slate-300 shadow-lg backdrop-blur-sm">
+    <nav className="crosswms-navbar sticky top-0 z-50 bg-white">
       <div className="w-full mx-auto">
         <div className="flex items-center justify-between px-4 lg:px-6 py-3">
           
@@ -138,7 +138,7 @@ const TopNavbar: React.FC = () => {
 
           {/* Navigation Menu */}
           <div className="flex-1 mx-4 lg:mx-8">
-            <div className="flex items-center justify-center space-x-1 bg-white/60 backdrop-blur-sm rounded-2xl px-2 lg:px-4 py-2 shadow-inner border border-gray-200/50 overflow-hidden">
+            <div className="flex items-center justify-center space-x-1 px-2 lg:px-4 py-2">
               <NavItem icon={LayoutDashboard} label="Dashboard" href="/dashboard" />
               
               {/* Administração */}
@@ -525,7 +525,7 @@ const TopNavbar: React.FC = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent 
                 align="end" 
-                className="w-80 sm:w-96 max-w-[calc(100vw-1rem)] bg-white border border-gray-200 rounded-xl shadow-xl z-50"
+                className="w-80 sm:w-96 max-w-[calc(100vw-1rem)] bg-white rounded-xl z-50"
                 sideOffset={5}
                 alignOffset={-5}
               >

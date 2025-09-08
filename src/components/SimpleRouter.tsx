@@ -343,7 +343,7 @@ export const SimpleRouter = () => {
     case '/armazenagem/carregamento/expedicao':
       return <ExpedicaoCarregamento />;
     case '/armazenagem/fila-x':
-      return <TransportadorRoute><FilaX /></TransportadorRoute>;
+      return <FilaX />;
     
     // Carregamento Routes (standalone module)
     case '/carregamento':
