@@ -1,3 +1,4 @@
+import React from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
 import { 
