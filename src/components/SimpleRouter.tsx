@@ -96,7 +96,6 @@ import Execucao from '@/pages/coletas/Execucao';
 import Armazenagem from '@/pages/armazenagem/Armazenagem';
 import ArmazenagemDashboard from '@/pages/armazenagem/Dashboard';
 import ArmazenagemConferencia from '@/pages/armazenagem/Conferencia';
-import ArmazenagemEnderecamento from '@/pages/armazenagem/Enderecamento';
 import ArmazenagemChecklist from '@/pages/armazenagem/Checklist';
 import RecebimentoOverview from '@/pages/armazenagem/RecebimentoOverview';
 import NotasFiscaisEntrada from '@/pages/armazenagem/NotasFiscaisEntrada';
@@ -115,7 +114,6 @@ import CarregamentoIndex from '@/pages/armazenagem/CarregamentoIndex';
 import OrdemCarregamento from '@/pages/armazenagem/OrdemCarregamento';
 import SeparacaoCarregamento from '@/pages/armazenagem/carregamento/SeparacaoCarregamento';
 import ConferenciaCarregamento from '@/pages/armazenagem/ConferenciaCarregamento';
-import EnderecamentoCarregamento from '@/pages/armazenagem/EnderecamentoCarregamento';
 import EnderecamentoCaminhao from '@/pages/armazenagem/carregamento/EnderecamentoCaminhao';
 import ChecklistCarregamento from '@/pages/armazenagem/ChecklistCarregamento';
 import ExpedicaoCarregamento from '@/pages/armazenagem/carregamento/ExpedicaoCarregamento';
@@ -297,8 +295,6 @@ export const SimpleRouter = () => {
       return <TransportadorRoute><RecebimentoOverview /></TransportadorRoute>;
     case '/armazenagem/conferencia':
       return <TransportadorRoute><ArmazenagemConferencia /></TransportadorRoute>;
-    case '/armazenagem/enderecamento':
-      return <TransportadorRoute><ArmazenagemEnderecamento /></TransportadorRoute>;
     case '/armazenagem/checklist':
       return <TransportadorRoute><ArmazenagemChecklist /></TransportadorRoute>;
     case '/armazenagem/recebimento':
