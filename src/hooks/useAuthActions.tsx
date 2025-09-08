@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
-import { toast } from '@/hooks/use-toast';
-import { authService } from '@/services/authService';
+import { toast } from './use-toast';
+import { authService } from '../services/authService';
 
 interface Usuario {
   id: string;
