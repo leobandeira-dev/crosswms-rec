@@ -1,204 +1,137 @@
 # CrossWMS - Sistema de Gestão Logística
 
-![CrossWMS Logo](https://img.shields.io/badge/CrossWMS-Sistema%20Log%C3%ADstico-blue)
-![Version](https://img.shields.io/badge/version-2.1.0-green)
-![License](https://img.shields.io/badge/license-MIT-blue)
+## 🚀 Sobre o Projeto
 
-## 📋 Sobre o Projeto
+O CrossWMS é um sistema completo de gestão logística desenvolvido em React + TypeScript, projetado para otimizar operações de armazenagem, coletas, expedição e marketplace.
 
-**CrossWMS** é uma plataforma logística integrada de alta performance desenvolvida especificamente para o mercado brasileiro. O sistema oferece gestão completa de operações logísticas com foco em processamento de NFe (Nota Fiscal Eletrônica), automação RPA e gerenciamento multi-tenant.
+## 📋 Funcionalidades Principais
 
-### 🎯 Principais Funcionalidades
+### 🏢 Super Admin Dashboard
+- **Métricas em Tempo Real**: Empresas Ativas (12), Usuários Total (156), Receita Mensal (R$ 24.500), Tickets Suporte (8)
+- **Ações Rápidas**: Gerenciar Empresas, Gestão de Pacotes, Aprovação Transportadores
+- **Relatórios Sistema**: Análises e métricas gerais
+- **Logs e Auditoria**: Monitoramento completo do sistema
 
-- **Gestão de Armazenagem**: Dashboard, Conferência, Endereçamento e Checklist
-- **Sistema de Coletas**: Solicitações, Programação, Execução e Relatórios
-- **Carregamento Inteligente**: Planejamento, Ordem de Carga, Execução e Rastreamento
-- **Portal do Cliente**: Dashboard personalizado, Aprovações, Rastreamento e Documentos
-- **Portal do Fornecedor**: Gestão de Solicitações, Documentação e Comunicação
-- **Administração Multi-Tenant**: Gestão de usuários, configurações e relatórios avançados
+### 📦 Módulos Implementados
+- **Armazenagem**: Recebimento, Movimentações, Carregamento, Rastreamento, FilaX
+- **Coletas**: Solicitações, Aprovações, Alocação de Cargas, Roteirização
+- **Expedição**: Faturamento, Emissão de Documentos, Remessas
+- **Marketplace**: Dashboard, Criação de Ordens, Monitoramento de Rotas
+- **Conquistas**: Sistema de Gamificação e Achievements
+- **SAC**: Atendimentos, Chamados, Ocorrências
+- **Relatórios**: Dashboards específicos por módulo
+- **Cadastros**: Empresas, Usuários, Produtos, Motoristas
 
-## 🏗️ Arquitetura Técnica
+## 🛠️ Tecnologias Utilizadas
 
-### Frontend
-- **React 18** com TypeScript
-- **Tailwind CSS** para estilização
-- **Radix UI** componentes de interface
-- **TanStack Query** para gerenciamento de estado
-- **React Router** para navegação
-- **Vite** para build e desenvolvimento
-
-### Backend
-- **Node.js** com Express.js
-- **TypeScript** com ES modules
-- **PostgreSQL** com Drizzle ORM
-- **Autenticação JWT** com sessões seguras
-- **API RESTful** com validação Zod
-
-### Integrações
-- **NSDocs API** para busca de NFe
-- **BrasilAPI** para consulta de CNPJ
-- **Cloudflare** para CDN e domínio personalizado
-- **GitHub** para controle de versões
-
-## 🚀 Instalação e Configuração
-
-### Pré-requisitos
-- Node.js 18+ 
-- PostgreSQL 14+
-- NPM ou Yarn
-
-### 1. Clone o repositório
-```bash
-git clone https://github.com/crosswms/crosswms-sistema.git
-cd crosswms-sistema
-```
-
-### 2. Instale as dependências
-```bash
-npm install
-```
-
-### 3. Configure as variáveis de ambiente
-```bash
-cp .env.example .env
-```
-
-Edite o arquivo `.env` com suas configurações:
-```env
-DATABASE_URL=postgresql://usuario:senha@localhost:5432/crosswms
-NSDOCS_CLIENT_ID=seu_client_id
-NSDOCS_CLIENT_SECRET=seu_client_secret
-```
-
-### 4. Execute as migrações do banco
-```bash
-npm run db:push
-```
-
-### 5. Inicie o servidor de desenvolvimento
-```bash
-npm run dev
-```
-
-O sistema estará disponível em `http://localhost:5173`
-
-## 🔧 Scripts Disponíveis
-
-- `npm run dev` - Inicia servidor de desenvolvimento
-- `npm run build` - Build para produção
-- `npm run preview` - Preview do build de produção
-- `npm run db:push` - Sincroniza schema com banco de dados
-- `npm run db:studio` - Interface visual do banco (Drizzle Studio)
+- **Frontend**: React 18, TypeScript, Vite
+- **Roteamento**: Wouter + React Router DOM
+- **UI Components**: Radix UI, Tailwind CSS, Lucide Icons
+- **Estado**: TanStack Query, Context API
+- **Formulários**: React Hook Form, Zod
+- **Gráficos**: Recharts
+- **PDF/Print**: jsPDF, html2canvas
+- **QR/Barcode**: @zxing/browser, jsbarcode
+- **Drag & Drop**: react-beautiful-dnd
+- **Notificações**: Sonner
 
 ## 📁 Estrutura do Projeto
 
 ```
-crosswms/
-├── client/                 # Frontend React
-│   ├── src/
-│   │   ├── components/    # Componentes reutilizáveis
-│   │   ├── pages/        # Páginas da aplicação
-│   │   ├── hooks/        # Hooks customizados
-│   │   └── lib/          # Utilitários e configurações
-├── server/                # Backend Node.js
-│   ├── routes.ts         # Rotas da API
-│   ├── storage.ts        # Camada de dados
-│   └── index.ts          # Servidor Express
-├── shared/               # Código compartilhado
-│   └── schema.ts         # Schema do banco de dados
-├── migrations/           # Migrações do banco
-└── docs/                # Documentação
+src/
+├── components/          # Componentes reutilizáveis
+│   ├── ui/             # Componentes base (Radix UI)
+│   ├── layout/         # Layout (TopNavbar, MainLayout)
+│   ├── common/         # Componentes compartilhados
+│   └── [modulo]/       # Componentes específicos por módulo
+├── pages/              # Páginas da aplicação
+│   ├── admin/          # Páginas administrativas
+│   ├── armazenagem/    # Módulo de armazenagem
+│   ├── coletas/        # Módulo de coletas
+│   ├── expedicao/      # Módulo de expedição
+│   ├── marketplace/    # Módulo marketplace
+│   └── [outros]/       # Outros módulos
+├── routes/             # Configuração de rotas
+├── hooks/              # Custom hooks
+├── services/           # Serviços de API
+├── types/              # Definições TypeScript
+└── utils/              # Utilitários
+
+src_legacy/             # Versão anterior (backup)
+client/                 # Fonte original de referência
 ```
 
-## 🔐 Autenticação e Permissões
+## 🚀 Como Executar
 
-O sistema implementa um robusto sistema de autenticação multi-tenant com:
+### Desenvolvimento
+```bash
+npm install
+npm run dev
+```
 
-- **4 tipos de usuário**: Super Admin, Transportador, Cliente, Fornecedor
-- **Controle granular**: 38+ permissões específicas por módulo
-- **Hierarquia empresarial**: Sistema matriz-filial para grandes operações
-- **Segurança**: JWT com rotação automática de tokens
+### Apenas Frontend
+```bash
+npm run dev:client
+```
 
-### Credenciais padrão
-- **Email**: admin@crosswms.com.br
-- **Senha**: 123456
-- **Tipo**: Super Administrador
+### Apenas Backend
+```bash
+npm run dev:server
+```
 
-## 📊 Funcionalidades Principais
+## 🌐 Acesso
 
-### 1. Processamento de NFe
-- Importação via chave de acesso de 44 dígitos
-- Integração com APIs oficiais (NSDocs)
-- Extração automática de dados
-- Validação e cubagem de volumes
+- **Frontend**: http://localhost:8080 ou 8081
+- **Backend API**: http://localhost:5000
 
-### 2. Gestão de Cargas
-- Criação de ordens de carregamento
-- Otimização de rotas e volumes
-- Rastreamento em tempo real
-- Relatórios de performance
+### Navegação
+- `/` - Página inicial com seletor de versões
+- `/admin` - Super Admin Dashboard (Nova Versão)
+- `/legacy` - Dashboard anterior (Versão Legacy)
 
-### 3. Multi-Tenant
-- Isolamento completo de dados por empresa
-- Gestão hierárquica de usuários
-- Configurações personalizáveis
-- Aprovações em múltiplos níveis
+## 🎨 Interface
 
-## 🌐 Deploy e Produção
+### TopNavbar
+- **Logo**: CrossWMS + Gestão Logística
+- **Perfil**: Leonardo Bandeira - Super Admin
+- **Menus**: Dashboard, Admin, Coletas, Armazenagem, Marketplace, Conquistas, Cadastros, Relatórios, SAC
 
-### Deploy no Replit
-1. Configure as variáveis de ambiente no Replit
-2. Conecte ao banco PostgreSQL (Neon recomendado)
-3. Execute `npm run build` para build de produção
-4. Configure domínio personalizado via Cloudflare
+### Temas
+- **Cores**: Azul corporativo (#0066CC), cinzas profissionais
+- **Tipografia**: Inter (Google Fonts)
+- **Layout**: Responsivo, moderno, acessível
 
-### Configuração de Domínio
-Consulte os guias detalhados:
-- `GUIA_CLOUDFLARE_API.md` - Configuração completa do Cloudflare
-- `CONFIGURACAO_DOMINIO_HOSTGATOR.md` - DNS no Hostgator
-- `SOLUCAO_CACHE_POS_DEPLOY.md` - Resolução de problemas de cache
+## 📊 Métricas do Sistema
 
-## 📈 Monitoramento e Versões
+- **Empresas Ativas**: 12 (+2 este mês)
+- **Usuários Total**: 156 (+15 este mês)
+- **Receita Mensal**: R$ 24.500 (+12% vs mês anterior)
+- **Tickets Suporte**: 8 (3 pendentes)
 
-O sistema inclui:
-- **Tracking de versões** integrado com GitHub
-- **Histórico de deploys** com detalhes técnicos
-- **Monitoramento de performance** em tempo real
-- **Logs de auditoria** para operações críticas
+## 🔧 Configuração Replit
 
-## 🤝 Contribuição
+O projeto está configurado para rodar no Replit com:
+- **Porta**: 8080 (configurada no .replit)
+- **Preview**: Simple Browser
+- **Hot Reload**: Ativo
+- **Dependências**: Auto-instalação
 
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
+## 📝 Versioning
 
-## 📝 Changelog
+- **Versão Atual**: Sistema completo restaurado do client
+- **Versão Legacy**: Preservada em src_legacy/
+- **Fonte Original**: Mantida em client/
 
-### Versão 2.1.0 (Junho 2025)
-- ✅ Sistema multi-tenant completo
-- ✅ Integração GitHub para controle de versões
-- ✅ Domínio personalizado com Cloudflare
-- ✅ Interface redesenhada com melhor UX
-- ✅ API otimizada para performance
+## 🎯 Status
 
-### Versão 2.0.0 (Junho 2025)
-- ✅ Reescrita completa em TypeScript
-- ✅ Nova arquitetura multi-tenant
-- ✅ Sistema de permissões granulares
-- ✅ Integração com NSDocs API
-
-## 📞 Suporte
-
-- **Website**: [www.crosswms.com.br](https://www.crosswms.com.br)
-- **Email**: suporte@crosswms.com.br
-- **Documentação**: Consulte os arquivos `.md` na raiz do projeto
-
-## 📄 Licença
-
-Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
+✅ Sistema 100% operacional  
+✅ Todas as rotas implementadas  
+✅ Interface responsiva  
+✅ Dependências completas  
+✅ Configurado para Replit  
+✅ Backup de versões preservado  
 
 ---
 
-**CrossWMS** - Transformando a logística brasileira através da tecnologia 🚛📦
+**Desenvolvido por Leonardo Bandeira**  
+**CrossWMS © 2025 - Sistema de Gestão Logística**
