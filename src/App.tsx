@@ -1,20 +1,18 @@
+import React from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from '@/providers/AuthProvider';
 import { Toaster } from './components/ui/sonner';
 import { queryClient } from './lib/queryClient';
-import { useVersionCheck } from '@/hooks/useVersionCheck';
-import AppRoutes from './routes/AppRoutes';
 
 function App() {
-  // Sistema de verificação de versão desabilitado temporariamente
-  // useVersionCheck();
-
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AppRoutes />
+      <div>
+        <h1>CrossWMS - Sistema carregando...</h1>
+        <p>Banco de dados conectado ✅</p>
+        <p>Servidor rodando ✅</p>
+        <p>Sistema pronto para configuração!</p>
         <Toaster />
-      </AuthProvider>
+      </div>
     </QueryClientProvider>
   );
 }

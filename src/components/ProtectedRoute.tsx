@@ -1,8 +1,5 @@
-import React from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import React, { useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useEffect } from 'react';
-import { Usuario } from '@/types/supabase.types';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
