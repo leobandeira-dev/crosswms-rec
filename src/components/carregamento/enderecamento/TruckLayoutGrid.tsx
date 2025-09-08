@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Truck, Printer } from 'lucide-react';
 import TruckCell from './TruckCell';
+import LayoutPDFGenerator from './LayoutPDFGenerator';
 
 interface Volume {
   id: string;
@@ -40,6 +41,7 @@ interface TruckLayoutGridProps {
   onSaveLayout: () => void;
   allVolumesPositioned: boolean;
   onPrintLayout: () => void;
+  numeroLinhas: number;
 }
 
 const TruckLayoutGrid: React.FC<TruckLayoutGridProps> = ({
@@ -52,7 +54,8 @@ const TruckLayoutGrid: React.FC<TruckLayoutGridProps> = ({
   hasSelectedVolumes,
   onSaveLayout,
   allVolumesPositioned,
-  onPrintLayout
+  onPrintLayout,
+  numeroLinhas
 }) => {
   // Agrupar o layout por linhas para exibição
   const maxLinhas = Math.max(...layout.map(c => c.linha), 1);
@@ -66,8 +69,21 @@ const TruckLayoutGrid: React.FC<TruckLayoutGridProps> = ({
   
   // Referência para o layout que será usado para impressão
   const layoutRef = useRef<HTMLDivElement>(null);
+  const pdfGeneratorRef = useRef<any>(null);
+
+  // Função para gerar PDF
+  const handlePrintPDF = () => {
+    console.log('handlePrintPDF chamada');
+    console.log('pdfGeneratorRef.current:', pdfGeneratorRef.current);
+    if (pdfGeneratorRef.current) {
+      pdfGeneratorRef.current.generatePDF();
+    } else {
+      console.error('pdfGeneratorRef.current é null');
+    }
+  };
   
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="text-lg flex items-center">
@@ -124,8 +140,10 @@ const TruckLayoutGrid: React.FC<TruckLayoutGridProps> = ({
         <div className="mt-4 flex justify-end gap-2">
           <Button 
             variant="outline"
-            onClick={onPrintLayout}
-            disabled={positionedVolumes === 0}
+            onClick={() => {
+              console.log('Botão Imprimir clicado');
+              handlePrintPDF();
+            }}
           >
             <Printer className="mr-2 h-4 w-4" />
             Imprimir
@@ -139,7 +157,20 @@ const TruckLayoutGrid: React.FC<TruckLayoutGridProps> = ({
           </Button>
         </div>
       </CardContent>
+
     </Card>
+    
+    {/* Gerador de PDF */}
+    <LayoutPDFGenerator
+      ref={pdfGeneratorRef}
+      orderNumber={orderNumber}
+      layout={layout}
+      numeroLinhas={numeroLinhas}
+      onPrintComplete={() => {
+        console.log('PDF gerado com sucesso');
+      }}
+    />
+    </>
   );
 };
 

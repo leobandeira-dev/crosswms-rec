@@ -39,16 +39,19 @@ const TruckCell: React.FC<TruckCellProps> = ({
     const notasCount: Record<string, { fornecedor: string, count: number }> = {};
     
     volumes.forEach(v => {
-      if (!notasCount[v.notaFiscal]) {
-        notasCount[v.notaFiscal] = { fornecedor: v.fornecedor, count: 0 };
+      const notaFiscal = v.notaFiscal || 'N/A';
+      const fornecedor = v.fornecedor || 'Fornecedor não informado';
+      
+      if (!notasCount[notaFiscal]) {
+        notasCount[notaFiscal] = { fornecedor, count: 0 };
       }
-      notasCount[v.notaFiscal].count += 1;
+      notasCount[notaFiscal].count += 1;
     });
 
     return Object.entries(notasCount).map(([nf, info]) => ({
-      nf,
-      fornecedor: info.fornecedor,
-      count: info.count
+      nf: nf || 'N/A',
+      fornecedor: info.fornecedor || 'Fornecedor não informado',
+      count: info.count || 0
     }));
   };
 
@@ -56,35 +59,50 @@ const TruckCell: React.FC<TruckCellProps> = ({
 
   return (
     <div 
-      className={`flex-1 border-r last:border-r-0 p-2 min-h-[80px] ${
+      className={`flex-1 border-r last:border-r-0 p-2 min-h-[120px] ${
         hasSelectedVolumes ? 'hover:bg-blue-50 cursor-pointer' : ''
       } ${volumes.length > 0 ? 'bg-white' : ''}`}
       onClick={onClick}
     >
       {volumesInfo.length > 0 ? (
-        <div className="text-xs space-y-1">
-          {volumesInfo.map((info, idx) => (
-            <div key={idx} className="p-1 border rounded bg-white">
-              <div className="font-medium">{info.nf}</div>
-              <div className="text-gray-600 truncate">{info.fornecedor}</div>
-              <div className="flex justify-between">
-                <span>{info.count} vol.</span>
-                <Button 
-                  variant="ghost"
-                  size="sm"
-                  className="h-5 w-5 p-0 text-gray-400 hover:text-red-500"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    volumes
-                      .filter(v => v.notaFiscal === info.nf)
-                      .forEach(v => onRemoveVolume(v.id, id));
-                  }}
-                >
-                  ×
-                </Button>
+        <div className="text-xs">
+          {/* Cabeçalho da tabela */}
+          <div className="grid grid-cols-12 gap-1 mb-1 text-[10px] font-semibold text-gray-600 border-b pb-1">
+            <div className="col-span-3">NF</div>
+            <div className="col-span-6">Fornecedor</div>
+            <div className="col-span-2">Qtd</div>
+            <div className="col-span-1"></div>
+          </div>
+          
+          {/* Linhas de dados */}
+          <div className="space-y-1 max-h-[80px] overflow-y-auto">
+            {volumesInfo.map((info, idx) => (
+              <div key={idx} className="grid grid-cols-12 gap-1 items-center py-1 hover:bg-gray-50 rounded">
+                <div className="col-span-3 font-medium text-blue-600">{info.nf}</div>
+                <div className="col-span-6 text-gray-700 truncate" title={info.fornecedor || 'N/A'}>
+                  {info.fornecedor && info.fornecedor.length > 15 ? `${info.fornecedor.substring(0, 15)}...` : (info.fornecedor || 'N/A')}
+                </div>
+                <div className="col-span-2 text-center font-semibold text-green-600">
+                  {info.count}
+                </div>
+                <div className="col-span-1 flex justify-center">
+                  <Button 
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      volumes
+                        .filter(v => v.notaFiscal === info.nf)
+                        .forEach(v => onRemoveVolume(v.id, id));
+                    }}
+                  >
+                    ×
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : (
         <div className="flex items-center justify-center h-full text-xs text-gray-400">

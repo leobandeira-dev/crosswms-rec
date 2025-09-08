@@ -133,11 +133,35 @@ export const useEnderecamentoReal = () => {
     for (let linha = 1; linha <= linhas; linha++) {
       for (const coluna of colunas) {
         const cellId = `${coluna.charAt(0).toUpperCase()}${linha}`;
+        // Verificar se é array ou objeto único
+        const volumesNaPosicao = layoutAtual[cellId];
+        let volumesFormatados: any[] = [];
+        
+        if (volumesNaPosicao) {
+          if (Array.isArray(volumesNaPosicao)) {
+            // Se já é array, usar diretamente
+            volumesFormatados = volumesNaPosicao;
+          } else {
+            // Se é objeto único, converter para array
+            volumesFormatados = [{
+              ...volumesNaPosicao,
+              fornecedor: volumesNaPosicao.destinatario || volumesNaPosicao.fornecedor || 'Fornecedor não informado',
+              produto: volumesNaPosicao.codigo || 'Produto não informado',
+              dimensoes: 'N/A',
+              fragil: false,
+              posicionado: true,
+              etiquetaMae: '',
+              quantidade: 1,
+              etiquetado: true
+            }];
+          }
+        }
+
         novoLayout.push({
           id: cellId,
           coluna,
           linha,
-          volumes: layoutAtual[cellId] ? [layoutAtual[cellId]] : []
+          volumes: volumesFormatados
         });
       }
     }
@@ -449,15 +473,50 @@ export const useEnderecamentoReal = () => {
     if (selecionados.length === 0) return;
 
     const novoLayout = { ...caminhaoLayout };
+    const volumesSelecionados = volumes.filter(v => selecionados.includes(v.id));
     
-    selecionados.forEach((volumeId, index) => {
-      const volume = volumes.find(v => v.id === volumeId);
-      if (volume) {
-        const posicaoFinal = selecionados.length > 1 ? `${posicao}-${index + 1}` : posicao;
-        novoLayout[posicaoFinal] = { ...volume, posicao: posicaoFinal };
-        // Atualizar status do volume
-        atualizarStatusVolume(volumeId, 'posicionado');
+    // Obter volumes já existentes na posição
+    const volumesExistentes = novoLayout[posicao] || [];
+    const volumesExistentesArray = Array.isArray(volumesExistentes) ? volumesExistentes : (volumesExistentes ? [volumesExistentes] : []);
+    
+    // Agrupar volumes selecionados por nota fiscal
+    const volumesPorNF: Record<string, any[]> = {};
+    volumesSelecionados.forEach(volume => {
+      const nf = volume.notaFiscal || 'N/A';
+      if (!volumesPorNF[nf]) {
+        volumesPorNF[nf] = [];
       }
+      volumesPorNF[nf].push(volume);
+    });
+
+    // Criar array de novos volumes formatados
+    const novosVolumes: any[] = [];
+    Object.values(volumesPorNF).forEach(volumesDaNF => {
+      volumesDaNF.forEach(volume => {
+        novosVolumes.push({
+          ...volume,
+          posicao: posicao,
+          fornecedor: volume.destinatario || volume.fornecedor || 'Fornecedor não informado',
+          produto: volume.codigo || 'Produto não informado',
+          dimensoes: 'N/A',
+          fragil: false,
+          posicionado: true,
+          etiquetaMae: '',
+          quantidade: 1,
+          etiquetado: true
+        });
+      });
+    });
+
+    // Combinar volumes existentes com novos volumes
+    const todosVolumes = [...volumesExistentesArray, ...novosVolumes];
+
+    // Atualizar layout com todos os volumes da posição
+    novoLayout[posicao] = todosVolumes;
+
+    // Atualizar status dos volumes
+    selecionados.forEach(volumeId => {
+      atualizarStatusVolume(volumeId, 'posicionado');
     });
 
     setCaminhaoLayout(novoLayout);
@@ -470,20 +529,31 @@ export const useEnderecamentoReal = () => {
   }, [selecionados, volumes, caminhaoLayout, atualizarStatusVolume]);
 
   // Remover volume do caminhão
-  const removerVolume = useCallback((posicao: string) => {
-    const volume = caminhaoLayout[posicao];
-    if (volume) {
-      // Atualizar status do volume
-      atualizarStatusVolume(volume.id, 'disponivel');
-    }
+  const removerVolume = useCallback((volumeId: string, cellId: string) => {
+    const volumesNaPosicao = caminhaoLayout[cellId];
+    if (!volumesNaPosicao) return;
 
     const novoLayout = { ...caminhaoLayout };
-    delete novoLayout[posicao];
+    
+    if (Array.isArray(volumesNaPosicao)) {
+      // Se é array, remover o volume específico
+      const volumesRestantes = volumesNaPosicao.filter(v => v.id !== volumeId);
+      if (volumesRestantes.length > 0) {
+        novoLayout[cellId] = volumesRestantes;
+      } else {
+        delete novoLayout[cellId];
+      }
+    } else {
+      // Se é objeto único, remover a posição inteira
+      delete novoLayout[cellId];
+    }
+
     setCaminhaoLayout(novoLayout);
+    atualizarStatusVolume(volumeId, 'disponivel');
 
     toast({
       title: "Volume removido",
-      description: `Volume removido da posição ${posicao}.`,
+      description: `Volume removido da posição ${cellId}.`,
     });
   }, [caminhaoLayout, atualizarStatusVolume]);
 
@@ -666,8 +736,21 @@ export const useEnderecamentoReal = () => {
   }, [atualizarStatusOrdem]);
 
   // Verificar se todos os volumes estão posicionados
-  const allVolumesPositioned = volumes.length > 0 && 
-    Object.keys(caminhaoLayout).length === volumes.length;
+  const allVolumesPositioned = (() => {
+    if (volumes.length === 0) return false;
+    
+    // Contar volumes posicionados no layout
+    let volumesPosicionados = 0;
+    Object.values(caminhaoLayout).forEach(volumesNaPosicao => {
+      if (Array.isArray(volumesNaPosicao)) {
+        volumesPosicionados += volumesNaPosicao.length;
+      } else if (volumesNaPosicao) {
+        volumesPosicionados += 1;
+      }
+    });
+    
+    return volumesPosicionados === volumes.length;
+  })();
 
   return {
     ordemSelecionada,

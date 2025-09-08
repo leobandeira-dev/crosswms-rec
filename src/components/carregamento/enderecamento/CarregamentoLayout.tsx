@@ -105,6 +105,7 @@ const CarregamentoLayout: React.FC<CarregamentoLayoutProps> = ({
                 onSaveLayout={onSaveLayout}
                 allVolumesPositioned={allVolumesPositioned}
                 onPrintLayout={handlePrintLayout}
+                numeroLinhas={numeroLinhas}
               />
               <InstructionsCard />
             </div>
