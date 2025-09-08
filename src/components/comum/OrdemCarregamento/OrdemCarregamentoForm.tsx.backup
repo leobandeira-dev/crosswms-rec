@@ -1,0 +1,2006 @@
+import { useState, useEffect, useRef } from 'react';
+import React from 'react';
+import PrintDialog from './PrintDialog';
+import { useForm } from 'react-hook-form';
+import { fetchCNPJData, formatCNPJ, cleanCNPJ, validateCNPJ } from '@/utils/cnpjApi';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { 
+  Plus, 
+  Package, 
+  MapPin, 
+  FileText, 
+  Upload,
+  Download,
+  X,
+  CheckCircle,
+  AlertTriangle,
+  Save,
+  ArrowLeft,
+  Truck,
+  Calendar,
+  DollarSign,
+  Weight,
+  Ruler,
+  User,
+  Phone,
+  Building,
+  Loader2,
+  Info,
+  Search,
+  Printer
+} from 'lucide-react';
+
+// Esquemas de validação
+const ordemSchema = z.object({
+  tipo: z.enum(['Direta', 'Coleta', 'Armazém'], {
+    required_error: 'Tipo de ordem é obrigatório'
+  }),
+  remetente: z.object({
+    cnpj: z.string().min(1, 'CNPJ é obrigatório'),
+    razaoSocial: z.string().min(1, 'Razão social é obrigatória'),
+    nomeFantasia: z.string().optional(),
+    endereco: z.string().min(1, 'Endereço é obrigatório'),
+    numero: z.string().min(1, 'Número é obrigatório'),
+    bairro: z.string().min(1, 'Bairro é obrigatório'),
+    cidade: z.string().min(1, 'Cidade é obrigatória'),
+    uf: z.string().min(2, 'UF é obrigatório'),
+    cep: z.string().min(1, 'CEP é obrigatório'),
+    telefone: z.string().optional()
+  }),
+  destinatario: z.object({
+    cnpj: z.string().min(1, 'CNPJ é obrigatório'),
+    razaoSocial: z.string().min(1, 'Razão social é obrigatória'),
+    nomeFantasia: z.string().optional(),
+    endereco: z.string().min(1, 'Endereço é obrigatório'),
+    numero: z.string().min(1, 'Número é obrigatório'),
+    bairro: z.string().min(1, 'Bairro é obrigatório'),
+    cidade: z.string().min(1, 'Cidade é obrigatória'),
+    uf: z.string().min(2, 'UF é obrigatório'),
+    cep: z.string().min(1, 'CEP é obrigatório'),
+    telefone: z.string().optional()
+  }),
+  prazoEntrega: z.string().min(1, 'Prazo de entrega é obrigatório'),
+  valorFrete: z.string().min(1, 'Valor do frete é obrigatório'),
+  observacoes: z.string().optional()
+});
+
+const nfeSchema = z.object({
+  chaveAcesso: z.string().length(44, 'Chave de acesso deve ter exatamente 44 dígitos'),
+  numero: z.string().min(1, 'Número da NFe é obrigatório'),
+  valorDeclarado: z.string().min(1, 'Valor declarado é obrigatório'),
+  peso: z.string().min(1, 'Peso é obrigatório'),
+  volume: z.string().min(1, 'Volume é obrigatório')
+});
+
+interface NFe {
+  id: string;
+  chaveAcesso: string;
+  numero: string;
+  valorDeclarado: number;
+  peso: number;
+  volume: number;
+  remetente?: {
+    razaoSocial: string;
+    cnpj: string;
+    cidade: string;
+    uf: string;
+  };
+  destinatario?: {
+    razaoSocial: string;
+    cnpj: string;
+    cidade: string;
+    uf: string;
+  };
+  m3?: number;
+}
+
+interface OrdemCarregamentoFormProps {
+  onSubmit: (data: any) => void;
+  onCancel?: () => void;
+  initialData?: any;
+  title?: string;
+  showBackButton?: boolean;
+  mode?: 'create' | 'edit' | 'view';
+  hideNFeSection?: boolean;
+}
+
+export const OrdemCarregamentoForm: React.FC<OrdemCarregamentoFormProps> = ({
+  onSubmit,
+  onCancel,
+  initialData,
+  title = "Nova Solicitação de Carregamento",
+  showBackButton = true,
+  mode = 'create',
+  hideNFeSection = false
+}) => {
+  const [nfes, setNfes] = useState<NFe[]>([]);
+  const [showNfeDialog, setShowNfeDialog] = useState(false);
+  const [showXmlSearchDialog, setShowXmlSearchDialog] = useState(false);
+  const [cnpjRemetenteLoading, setCnpjRemetenteLoading] = useState(false);
+  const [cnpjDestinatarioLoading, setCnpjDestinatarioLoading] = useState(false);
+  const [cnpjRemetenteError, setCnpjRemetenteError] = useState<string | null>(null);
+  const [cnpjDestinatarioError, setCnpjDestinatarioError] = useState<string | null>(null);
+  const [xmlSearchKey, setXmlSearchKey] = useState('');
+  const [xmlSearchLoading, setXmlSearchLoading] = useState(false);
+  const [xmlSearchError, setXmlSearchError] = useState<string | null>(null);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+
+  // Initialize NFes from preloaded data or localStorage
+  useEffect(() => {
+    if (initialData?.nfes && Array.isArray(initialData.nfes)) {
+      console.log('Initializing NFes from preloaded data:', initialData.nfes);
+      setNfes(initialData.nfes);
+    } else {
+      // Try to load from localStorage if no preloaded data
+      try {
+        const storedInvoices = localStorage.getItem('processedInvoices');
+        if (storedInvoices) {
+          const processedInvoices = JSON.parse(storedInvoices);
+          if (processedInvoices.length > 0) {
+            console.log('Loading NFes from localStorage:', processedInvoices);
+            // Convert processed invoices to NFe format
+            const convertedNfes = processedInvoices.map((invoice: any) => ({
+              id: invoice.chave_nota_fiscal || invoice.id,
+              chaveAcesso: invoice.chave_nota_fiscal,
+              numero: invoice.numero_nota,
+              valorDeclarado: parseFloat(invoice.valor_nota_fiscal || '0'),
+              peso: parseFloat(invoice.peso_bruto || '0'),
+              volume: parseFloat(invoice.quantidade_volumes || '1'),
+              remetente: {
+                razaoSocial: invoice.emitente_razao_social || '',
+                cnpj: invoice.emitente_cnpj || '',
+                cidade: invoice.emitente_cidade || '',
+                uf: invoice.emitente_uf || '',
+                endereco: invoice.emitente_endereco || '',
+                bairro: invoice.emitente_bairro || '',
+                cep: invoice.emitente_cep || '',
+                telefone: invoice.emitente_telefone || ''
+              },
+              destinatario: {
+                razaoSocial: invoice.destinatario_razao_social || '',
+                cnpj: invoice.destinatario_cnpj || '',
+                cidade: invoice.destinatario_cidade || '',
+                uf: invoice.destinatario_uf || '',
+                endereco: invoice.destinatario_endereco || '',
+                bairro: invoice.destinatario_bairro || '',
+                cep: invoice.destinatario_cep || '',
+                telefone: invoice.destinatario_telefone || ''
+              },
+              m3: parseFloat(invoice.quantidade_volumes || '1') * 0.1 // Default volume calculation
+            }));
+            setNfes(convertedNfes);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading processed invoices from localStorage:', error);
+      }
+    }
+  }, [initialData]);
+
+  const ordemForm = useForm({
+    resolver: zodResolver(ordemSchema),
+    defaultValues: {
+      tipo: initialData?.tipo || '',
+      remetente: {
+        cnpj: '',
+        razaoSocial: '',
+        nomeFantasia: '',
+        endereco: '',
+        numero: '',
+        bairro: '',
+        cidade: '',
+        uf: '',
+        cep: '',
+        telefone: ''
+      },
+      destinatario: {
+        cnpj: '',
+        razaoSocial: '',
+        nomeFantasia: '',
+        endereco: '',
+        numero: '',
+        bairro: '',
+        cidade: '',
+        uf: '',
+        cep: '',
+        telefone: ''
+      },
+      prazoEntrega: '',
+      valorFrete: '',
+      observacoes: ''
+    }
+  });
+
+  const nfeForm = useForm({
+    resolver: zodResolver(nfeSchema),
+    defaultValues: {
+      chaveAcesso: '',
+      numero: '',
+      valorDeclarado: '',
+      peso: '',
+      volume: ''
+    }
+  });
+
+  const formatarTelefone = (valor: string): string => {
+    const numeros = valor.replace(/\D/g, '');
+    if (numeros.length <= 11) {
+      return numeros.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3');
+    }
+    return valor;
+  };
+
+  const formatarCEP = (valor: string): string => {
+    const numeros = valor.replace(/\D/g, '');
+    return numeros.replace(/(\d{5})(\d{3})/, '$1-$2');
+  };
+
+  const formatarCNPJ = (valor: string): string => {
+    const numeros = valor.replace(/\D/g, '');
+    if (numeros.length <= 14) {
+      return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+    return valor;
+  };
+
+  // Função para buscar dados do CNPJ do remetente
+  const buscarDadosRemetente = async (cnpj: string) => {
+    const cleanedCnpj = cleanCNPJ(cnpj);
+    
+    if (!validateCNPJ(cleanedCnpj)) {
+      setCnpjRemetenteError('CNPJ inválido');
+      return;
+    }
+
+    setCnpjRemetenteLoading(true);
+    setCnpjRemetenteError(null);
+
+    try {
+      const result = await fetchCNPJData(cnpj);
+      
+      if (result.success && result.data) {
+        ordemForm.setValue('remetente.cnpj', formatCNPJ(result.data.cnpj));
+        ordemForm.setValue('remetente.razaoSocial', result.data.razaoSocial);
+        ordemForm.setValue('remetente.nomeFantasia', result.data.nomeFantasia);
+        ordemForm.setValue('remetente.endereco', result.data.endereco);
+        ordemForm.setValue('remetente.numero', result.data.numero);
+        ordemForm.setValue('remetente.bairro', result.data.bairro);
+        ordemForm.setValue('remetente.cidade', result.data.cidade);
+        ordemForm.setValue('remetente.uf', result.data.uf);
+        ordemForm.setValue('remetente.cep', result.data.cep);
+        if (result.data.telefone) {
+          ordemForm.setValue('remetente.telefone', result.data.telefone);
+        }
+      } else {
+        setCnpjRemetenteError(result.error || 'CNPJ não encontrado');
+      }
+    } catch (error) {
+      setCnpjRemetenteError('Erro na consulta. Tente novamente.');
+    } finally {
+      setCnpjRemetenteLoading(false);
+    }
+  };
+
+  // Função para buscar dados do CNPJ do destinatário
+  const buscarDadosDestinatario = async (cnpj: string) => {
+    const cleanedCnpj = cleanCNPJ(cnpj);
+    
+    if (!validateCNPJ(cleanedCnpj)) {
+      setCnpjDestinatarioError('CNPJ inválido');
+      return;
+    }
+
+    setCnpjDestinatarioLoading(true);
+    setCnpjDestinatarioError(null);
+
+    try {
+      const result = await fetchCNPJData(cnpj);
+      
+      if (result.success && result.data) {
+        ordemForm.setValue('destinatario.cnpj', formatCNPJ(result.data.cnpj));
+        ordemForm.setValue('destinatario.razaoSocial', result.data.razaoSocial);
+        ordemForm.setValue('destinatario.nomeFantasia', result.data.nomeFantasia);
+        ordemForm.setValue('destinatario.endereco', result.data.endereco);
+        ordemForm.setValue('destinatario.numero', result.data.numero);
+        ordemForm.setValue('destinatario.bairro', result.data.bairro);
+        ordemForm.setValue('destinatario.cidade', result.data.cidade);
+        ordemForm.setValue('destinatario.uf', result.data.uf);
+        ordemForm.setValue('destinatario.cep', result.data.cep);
+        if (result.data.telefone) {
+          ordemForm.setValue('destinatario.telefone', result.data.telefone);
+        }
+      } else {
+        setCnpjDestinatarioError(result.error || 'CNPJ não encontrado');
+      }
+    } catch (error) {
+      setCnpjDestinatarioError('Erro na consulta. Tente novamente.');
+    } finally {
+      setCnpjDestinatarioLoading(false);
+    }
+  };
+
+  const adicionarNfe = (data: any) => {
+    const novaNfe: NFe = {
+      id: Date.now().toString(),
+      chaveAcesso: data.chaveAcesso,
+      numero: data.numero,
+      valorDeclarado: parseFloat(data.valorDeclarado),
+      peso: parseFloat(data.peso),
+      volume: parseInt(data.volume)
+    };
+
+    setNfes([...nfes, novaNfe]);
+    nfeForm.reset();
+    setShowNfeDialog(false);
+  };
+
+  const removerNfe = (id: string) => {
+    setNfes(nfes.filter(nfe => nfe.id !== id));
+  };
+
+  // Auto-populate form data when initialData is provided
+  useEffect(() => {
+    if (initialData) {
+      // Set NFes from preloaded data and enrich with city information
+      if (initialData.nfes && Array.isArray(initialData.nfes)) {
+        // First, set the NFes as-is
+        setNfes(initialData.nfes);
+        
+        // Set order type from preloaded data
+        if (initialData.tipo) {
+          ordemForm.setValue('tipo', initialData.tipo);
+        }
+        
+        // NFe data should already contain city information from XML parsing
+        // No need for additional API enrichment
+        
+        // Auto-populate CNPJ fields with predominant CNPJs
+        const remetenteCnpjs = initialData.nfes
+          .map((nfe: any) => nfe.remetente?.cnpj)
+          .filter(Boolean);
+        const destinatarioCnpjs = initialData.nfes
+          .map((nfe: any) => nfe.destinatario?.cnpj)
+          .filter(Boolean);
+        
+        // Find the most frequent CNPJ for remetente
+        if (remetenteCnpjs.length > 0) {
+          const cnpjCounts = remetenteCnpjs.reduce((acc: any, cnpj: string) => {
+            acc[cnpj] = (acc[cnpj] || 0) + 1;
+            return acc;
+          }, {});
+          const predominantRemetenteCnpj = Object.keys(cnpjCounts)
+            .reduce((a, b) => cnpjCounts[a] > cnpjCounts[b] ? a : b);
+          
+          const formattedRemetenteCnpj = formatarCNPJ(predominantRemetenteCnpj);
+          ordemForm.setValue('remetente.cnpj', formattedRemetenteCnpj);
+          
+          // Trigger automatic CNPJ lookup for remetente
+          setTimeout(() => {
+            buscarDadosRemetente(formattedRemetenteCnpj);
+          }, 100);
+          
+          // Auto-fill remetente data from first NFe with this CNPJ as fallback
+          const firstNfeWithCnpj = initialData.nfes.find((nfe: any) => 
+            nfe.remetente?.cnpj === predominantRemetenteCnpj
+          );
+          if (firstNfeWithCnpj?.remetente) {
+            ordemForm.setValue('remetente.razaoSocial', firstNfeWithCnpj.remetente.razaoSocial || '');
+            ordemForm.setValue('remetente.cidade', firstNfeWithCnpj.remetente.cidade || '');
+            ordemForm.setValue('remetente.uf', firstNfeWithCnpj.remetente.uf || '');
+          }
+        }
+        
+        // Find the most frequent CNPJ for destinatario
+        if (destinatarioCnpjs.length > 0) {
+          const cnpjCounts = destinatarioCnpjs.reduce((acc: any, cnpj: string) => {
+            acc[cnpj] = (acc[cnpj] || 0) + 1;
+            return acc;
+          }, {});
+          const predominantDestinatarioCnpj = Object.keys(cnpjCounts)
+            .reduce((a, b) => cnpjCounts[a] > cnpjCounts[b] ? a : b);
+          
+          const formattedDestinatarioCnpj = formatarCNPJ(predominantDestinatarioCnpj);
+          ordemForm.setValue('destinatario.cnpj', formattedDestinatarioCnpj);
+          
+          // Trigger automatic CNPJ lookup for destinatario
+          setTimeout(() => {
+            buscarDadosDestinatario(formattedDestinatarioCnpj);
+          }, 200);
+          
+          // Auto-fill destinatario data from first NFe with this CNPJ as fallback
+          const firstNfeWithCnpj = initialData.nfes.find((nfe: any) => 
+            nfe.destinatario?.cnpj === predominantDestinatarioCnpj
+          );
+          if (firstNfeWithCnpj?.destinatario) {
+            ordemForm.setValue('destinatario.razaoSocial', firstNfeWithCnpj.destinatario.razaoSocial || '');
+            ordemForm.setValue('destinatario.cidade', firstNfeWithCnpj.destinatario.cidade || '');
+            ordemForm.setValue('destinatario.uf', firstNfeWithCnpj.destinatario.uf || '');
+          }
+        }
+      }
+    }
+  }, [initialData, ordemForm]);
+
+  // Function to search and add NFe by XML key
+  const buscarXmlPorChave = async () => {
+    if (!xmlSearchKey || xmlSearchKey.length !== 44) {
+      setXmlSearchError('Chave deve ter exatamente 44 dígitos');
+      return;
+    }
+
+    setXmlSearchLoading(true);
+    setXmlSearchError(null);
+
+    try {
+      const response = await fetch(`/api/nfe/search/${xmlSearchKey}`);
+      
+      if (!response.ok) {
+        throw new Error('NFe não encontrada');
+      }
+
+      const nfeData = await response.json();
+      
+      // Create NFe object from search result
+      const newNfe: NFe = {
+        id: nfeData.chaveAcesso || xmlSearchKey,
+        chaveAcesso: xmlSearchKey,
+        numero: nfeData.numero || '',
+        valorDeclarado: parseFloat(nfeData.valorDeclarado || '0'),
+        peso: parseFloat(nfeData.peso || '0'),
+        volume: parseInt(nfeData.volume || '1'),
+        remetente: nfeData.remetente,
+        destinatario: nfeData.destinatario,
+        m3: parseFloat(nfeData.m3 || '0')
+      };
+
+      // Check if NFe already exists
+      if (nfes.some(nfe => nfe.chaveAcesso === xmlSearchKey)) {
+        setXmlSearchError('Esta NFe já foi adicionada');
+        return;
+      }
+
+      setNfes(prev => [...prev, newNfe]);
+      setXmlSearchKey('');
+      setShowXmlSearchDialog(false);
+      
+    } catch (error) {
+      setXmlSearchError('Erro ao buscar NFe. Verifique a chave de acesso.');
+    } finally {
+      setXmlSearchLoading(false);
+    }
+  };
+
+  const handleSubmitOrdem = (data: any) => {
+    const ordemCompleta = {
+      ...data,
+      nfes: nfes
+    };
+    onSubmit(ordemCompleta);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          {showBackButton && onCancel && (
+            <Button variant="ghost" size="sm" onClick={onCancel}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </Button>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+            <p className="text-gray-600">
+              {mode === 'create' ? 'Preencha os dados para criar uma nova ordem de carregamento' : 
+               mode === 'edit' ? 'Edite os dados da ordem de carregamento' :
+               'Visualize os dados da ordem de carregamento'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <Form {...ordemForm}>
+        <form onSubmit={ordemForm.handleSubmit(handleSubmitOrdem)} className="space-y-6">
+          {/* Tipo de Ordem */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold">Tipo de Ordem</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={ordemForm.control}
+                name="tipo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Selecione o tipo de ordem</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={mode === 'view'}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Escolha o tipo de ordem" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Direta">
+                          <div className="flex items-center gap-2">
+                            <Truck className="w-4 h-4 text-blue-500" />
+                            <div>
+                              <div className="font-medium">Direta</div>
+                              <div className="text-sm text-gray-500">Supplier → Customer</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Coleta">
+                          <div className="flex items-center gap-2">
+                            <Package className="w-4 h-4 text-green-500" />
+                            <div>
+                              <div className="font-medium">Coleta</div>
+                              <div className="text-sm text-gray-500">Supplier → Operator</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Armazém">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-orange-500" />
+                            <div>
+                              <div className="font-medium">Armazém</div>
+                              <div className="text-sm text-gray-500">Operator → Customer</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Dados do Remetente e Destinatário */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Dados do Remetente */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-green-500" />
+                  Dados do Remetente
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={ordemForm.control}
+                  name="remetente.cnpj"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CNPJ</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input 
+                            placeholder="00.000.000/0000-00" 
+                            {...field}
+                            disabled={mode === 'view'}
+                            onChange={(e) => {
+                              const formatted = formatCNPJ(e.target.value);
+                              field.onChange(formatted);
+                              
+                              const clean = cleanCNPJ(formatted);
+                              if (clean.length === 14) {
+                                buscarDadosRemetente(clean);
+                              }
+                            }}
+                          />
+                          {cnpjRemetenteLoading && (
+                            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />
+                          )}
+                        </div>
+                      </FormControl>
+                      {cnpjRemetenteError && (
+                        <p className="text-sm text-red-500">{cnpjRemetenteError}</p>
+                      )}
+                      {mode !== 'view' && (
+                        <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                          <Info className="w-4 h-4" />
+                          <span>Digite o CNPJ para preenchimento automático dos dados</span>
+                        </div>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={ordemForm.control}
+                  name="remetente.razaoSocial"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Razão Social</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Nome da empresa" 
+                          {...field} 
+                          disabled={mode === 'view'}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={ordemForm.control}
+                  name="remetente.nomeFantasia"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome Fantasia</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Nome fantasia" 
+                          {...field} 
+                          disabled={mode === 'view'}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={ordemForm.control}
+                  name="remetente.endereco"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rua, Avenida, etc...</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Endereço completo" 
+                          {...field} 
+                          disabled={mode === 'view'}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={ordemForm.control}
+                    name="remetente.numero"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nº/Compl.</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="123" 
+                            {...field} 
+                            disabled={mode === 'view'}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={ordemForm.control}
+                    name="remetente.bairro"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bairro</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Centro" 
+                            {...field} 
+                            disabled={mode === 'view'}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <FormField
+                    control={ordemForm.control}
+                    name="remetente.cidade"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cidade</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="São Paulo" 
+                            {...field} 
+                            disabled={mode === 'view'}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={ordemForm.control}
+                    name="remetente.uf"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>UF</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="SP" 
+                            maxLength={2} 
+                            {...field} 
+                            disabled={mode === 'view'}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={ordemForm.control}
+                    name="remetente.cep"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CEP</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="00000-000" 
+                            {...field}
+                            disabled={mode === 'view'}
+                            onChange={(e) => {
+                              field.onChange(formatarCEP(e.target.value));
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={ordemForm.control}
+                  name="remetente.telefone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefone</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="(11) 99999-9999" 
+                          {...field}
+                          disabled={mode === 'view'}
+                          onChange={(e) => {
+                            field.onChange(formatarTelefone(e.target.value));
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Dados do Destinatário */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-red-500" />
+                  Dados do Destinatário
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={ordemForm.control}
+                  name="destinatario.cnpj"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CNPJ</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input 
+                            placeholder="00.000.000/0000-00" 
+                            {...field}
+                            disabled={mode === 'view'}
+                            onChange={(e) => {
+                              const formatted = formatCNPJ(e.target.value);
+                              field.onChange(formatted);
+                              
+                              const clean = cleanCNPJ(formatted);
+                              if (clean.length === 14) {
+                                buscarDadosDestinatario(clean);
+                              }
+                            }}
+                          />
+                          {cnpjDestinatarioLoading && (
+                            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-blue-500" />
+                          )}
+                        </div>
+                      </FormControl>
+                      {cnpjDestinatarioError && (
+                        <p className="text-sm text-red-500">{cnpjDestinatarioError}</p>
+                      )}
+                      {mode !== 'view' && (
+                        <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                          <Info className="w-4 h-4" />
+                          <span>Digite o CNPJ para preenchimento automático dos dados</span>
+                        </div>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={ordemForm.control}
+                  name="destinatario.razaoSocial"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Razão Social</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Nome da empresa" 
+                          {...field} 
+                          disabled={mode === 'view'}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={ordemForm.control}
+                  name="destinatario.nomeFantasia"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome Fantasia</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Nome fantasia" 
+                          {...field} 
+                          disabled={mode === 'view'}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={ordemForm.control}
+                  name="destinatario.endereco"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rua, Avenida, etc...</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Endereço completo" 
+                          {...field} 
+                          disabled={mode === 'view'}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={ordemForm.control}
+                    name="destinatario.numero"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nº/Compl.</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="123" 
+                            {...field} 
+                            disabled={mode === 'view'}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={ordemForm.control}
+                    name="destinatario.bairro"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Bairro</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Centro" 
+                            {...field} 
+                            disabled={mode === 'view'}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <FormField
+                    control={ordemForm.control}
+                    name="destinatario.cidade"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cidade</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="São Paulo" 
+                            {...field} 
+                            disabled={mode === 'view'}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={ordemForm.control}
+                    name="destinatario.uf"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>UF</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="RJ" 
+                            maxLength={2} 
+                            {...field} 
+                            disabled={mode === 'view'}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={ordemForm.control}
+                    name="destinatario.cep"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CEP</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="00000-000" 
+                            {...field}
+                            disabled={mode === 'view'}
+                            onChange={(e) => {
+                              field.onChange(formatarCEP(e.target.value));
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={ordemForm.control}
+                  name="destinatario.telefone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Telefone</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="(11) 99999-9999" 
+                          {...field}
+                          disabled={mode === 'view'}
+                          onChange={(e) => {
+                            field.onChange(formatarTelefone(e.target.value));
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Informações de Transporte e Frete */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-green-500" />
+                Informações de Transporte
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={ordemForm.control}
+                  name="prazoEntrega"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Prazo de Entrega</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Ex: 5 dias úteis" 
+                          {...field} 
+                          disabled={mode === 'view'}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={ordemForm.control}
+                  name="valorFrete"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Valor do Frete (R$)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="0,00" 
+                          {...field} 
+                          disabled={mode === 'view'}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="mt-4">
+                <FormField
+                  control={ordemForm.control}
+                  name="observacoes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Informações adicionais sobre a ordem de carregamento..."
+                          className="min-h-[80px]"
+                          {...field}
+                          disabled={mode === 'view'}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notas Fiscais */}
+          {!hideNFeSection && mode !== 'view' && (
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-lg font-semibold">Notas Fiscais</CardTitle>
+                  <div className="flex gap-2">
+                    <Dialog open={showXmlSearchDialog} onOpenChange={setShowXmlSearchDialog}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Search className="w-4 h-4 mr-2" />
+                          Buscar XML
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Buscar Nota Fiscal por Chave</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="xmlKey">Chave de Acesso (44 dígitos)</Label>
+                            <Input
+                              id="xmlKey"
+                              placeholder="Digite a chave de acesso da NFe"
+                              value={xmlSearchKey}
+                              onChange={(e) => setXmlSearchKey(e.target.value.replace(/\D/g, '').slice(0, 44))}
+                              maxLength={44}
+                            />
+                            {xmlSearchError && (
+                              <p className="text-sm text-red-600 mt-1">{xmlSearchError}</p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              onClick={buscarXmlPorChave} 
+                              disabled={xmlSearchLoading || xmlSearchKey.length !== 44}
+                              className="flex-1"
+                            >
+                              {xmlSearchLoading ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <Search className="w-4 h-4 mr-2" />
+                              )}
+                              Buscar NFe
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              onClick={() => {
+                                setShowXmlSearchDialog(false);
+                                setXmlSearchKey('');
+                                setXmlSearchError(null);
+                              }}
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                    <Dialog open={showNfeDialog} onOpenChange={setShowNfeDialog}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Adicionar NFe
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Adicionar Nota Fiscal</DialogTitle>
+                      </DialogHeader>
+                      <Form {...nfeForm}>
+                        <form onSubmit={nfeForm.handleSubmit(adicionarNfe)} className="space-y-4">
+                          <FormField
+                            control={nfeForm.control}
+                            name="chaveAcesso"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Chave de Acesso</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="44 dígitos da chave de acesso" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <FormField
+                              control={nfeForm.control}
+                              name="numero"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Número da NFe</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="123456" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={nfeForm.control}
+                              name="valorDeclarado"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Valor Declarado (R$)</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="1000,00" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <FormField
+                              control={nfeForm.control}
+                              name="peso"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Peso (kg)</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="10,50" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={nfeForm.control}
+                              name="volume"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Volume</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="1" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="flex gap-2 pt-4">
+                            <Button type="submit" className="flex-1">
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Adicionar NFe
+                            </Button>
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => setShowNfeDialog(false)}
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </DialogContent>
+                  </Dialog>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {nfes.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhuma nota fiscal adicionada</p>
+                    <p className="text-sm">Clique em "Adicionar NFe" para começar</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b bg-gray-50">
+                            <th className="text-left p-3 font-medium">NFe</th>
+                            <th className="text-left p-3 font-medium">Remetente</th>
+                            <th className="text-left p-3 font-medium">Destinatário</th>
+                            <th className="text-center p-3 font-medium">Volumes</th>
+                            <th className="text-center p-3 font-medium">M³</th>
+                            <th className="text-center p-3 font-medium">Peso (kg)</th>
+                            <th className="text-center p-3 font-medium">Valor (R$)</th>
+                            <th className="text-center p-3 font-medium">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {nfes.map((nfe) => (
+                            <tr key={nfe.id} className="border-b hover:bg-gray-50">
+                              <td className="p-3">
+                                <div className="text-center">
+                                  <div className="font-medium text-lg text-blue-600">NFe {nfe.numero}</div>
+                                  <div className="text-xs text-gray-500">#{nfe.chaveAcesso.slice(-8)}</div>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div>
+                                  <div className="font-medium text-sm">{nfe.remetente?.razaoSocial || 'Não informado'}</div>
+                                  <div className="text-xs text-gray-500">{nfe.remetente?.cnpj || 'CNPJ não informado'}</div>
+                                  <div className="text-xs text-gray-500">
+                                    {nfe.remetente?.cidade ? `${nfe.remetente.cidade}-${nfe.remetente.uf}` : nfe.remetente?.uf || 'Local não informado'}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div>
+                                  <div className="font-medium text-sm">{nfe.destinatario?.razaoSocial || 'Não informado'}</div>
+                                  <div className="text-xs text-gray-500">{nfe.destinatario?.cnpj || 'CNPJ não informado'}</div>
+                                  <div className="text-xs text-gray-500">
+                                    {nfe.destinatario?.cidade ? `${nfe.destinatario.cidade}-${nfe.destinatario.uf}` : nfe.destinatario?.uf || 'Local não informado'}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-3 text-center">{nfe.volume}</td>
+                              <td className="p-3 text-center">{nfe.m3 || '0,00'}</td>
+                              <td className="p-3 text-center">{nfe.peso}</td>
+                              <td className="p-3 text-center">{nfe.valorDeclarado.toFixed(2)}</td>
+                              <td className="p-3 text-center">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removerNfe(nfe.id)}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                      <h4 className="font-semibold text-sm mb-3">Resumo da Carga</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                        <div className="text-center">
+                          <div className="font-medium text-blue-600">{nfes.length}</div>
+                          <div className="text-gray-500">Qtd. Notas</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-medium text-green-600">
+                            {nfes.reduce((acc, nfe) => acc + (parseFloat(nfe.volume?.toString() || '0') || 0), 0)}
+                          </div>
+                          <div className="text-gray-500">Volumes</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-medium text-orange-600">
+                            {nfes.reduce((acc, nfe) => acc + (parseFloat(nfe.m3?.toString() || '0') || 0), 0).toFixed(3)}
+                          </div>
+                          <div className="text-gray-500">M³</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-medium text-purple-600">
+                            {nfes.reduce((acc, nfe) => acc + (parseFloat(nfe.peso?.toString() || '0') || 0), 0).toFixed(2)}
+                          </div>
+                          <div className="text-gray-500">Peso (kg)</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-medium text-red-600">
+                            R$ {nfes.reduce((acc, nfe) => acc + (parseFloat(nfe.valorDeclarado?.toString() || '0') || 0), 0).toFixed(2)}
+                          </div>
+                          <div className="text-gray-500">Valor Total</div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <div className="font-medium text-sm mb-2">Origens:</div>
+                          <div className="text-sm text-gray-600">
+                            {(() => {
+                              const origens = nfes.map(nfe => {
+                                if (!nfe.remetente) return '';
+                                const cidade = nfe.remetente.cidade || '';
+                                const uf = nfe.remetente.uf || '';
+                                return cidade && uf ? `${cidade}-${uf}` : (uf ? `${uf}` : '');
+                              }).filter(Boolean);
+                              return Array.from(new Set(origens)).join(', ') || 'Não informado';
+                            })()}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm mb-2">Destinos:</div>
+                          <div className="text-sm text-gray-600">
+                            {(() => {
+                              const destinos = nfes.map(nfe => {
+                                if (!nfe.destinatario) return '';
+                                const cidade = nfe.destinatario.cidade || '';
+                                const uf = nfe.destinatario.uf || '';
+                                return cidade && uf ? `${cidade}-${uf}` : (uf ? `${uf}` : '');
+                              }).filter(Boolean);
+                              return Array.from(new Set(destinos)).join(', ') || 'Não informado';
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* View mode - Show NFes if any */}
+          {!hideNFeSection && mode === 'view' && nfes.length > 0 && (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold">Notas Fiscais</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {nfes.map((nfe) => (
+                    <div key={nfe.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                      <FileText className="w-5 h-5 text-blue-500" />
+                      <div>
+                        <div className="font-medium">NFe {nfe.numero}</div>
+                        <div className="text-sm text-gray-500">
+                          Valor: R$ {nfe.valorDeclarado.toFixed(2)} | 
+                          Peso: {nfe.peso}kg | 
+                          Volume: {nfe.volume}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Botões de ação */}
+          <div className="flex gap-4 pt-6">
+            {mode !== 'view' && (
+              <Button type="submit" className="flex-1">
+                <Save className="w-4 h-4 mr-2" />
+                {mode === 'create' ? 'Criar Solicitação de Carregamento' : 'Salvar Alterações'}
+              </Button>
+            )}
+            
+            {/* Botão Imprimir - disponível em todos os modos */}
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowPrintDialog(true)}
+              className={mode === 'view' ? 'flex-1' : ''}
+            >
+              <Printer className="w-4 h-4 mr-2" />
+              Imprimir Solicitação
+            </Button>
+            
+            {onCancel && mode !== 'view' && (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cancelar
+              </Button>
+            )}
+          </div>
+        </form>
+      </Form>
+
+      {/* Modal de Impressão */}
+      <PrintDialog 
+        open={showPrintDialog}
+        onClose={() => setShowPrintDialog(false)}
+        formData={ordemForm.getValues()}
+        nfes={nfes}
+      />
+    </div>
+  );
+};
+
+// Componente de impressão com layout profissional
+interface PrintDialogProps {
+  open: boolean;
+  onClose: () => void;
+  formData: any;
+  nfes: NFe[];
+}
+
+const PrintDialog: React.FC<PrintDialogProps> = ({ open, onClose, formData, nfes }) => {
+  const printRef = React.useRef<HTMLDivElement>(null);
+  const barcodeRefs = useRef<{ [key: string]: HTMLCanvasElement | null }>({});
+  const [documentType, setDocumentType] = React.useState<'romaneio' | 'expedicao' | null>(null);
+
+  // Função para gerar códigos de barras
+  const generateBarcodes = React.useCallback(() => {
+    if (documentType === 'expedicao' && nfes.length > 0) {
+      nfes.forEach((nfe) => {
+        if (nfe.chaveAcesso && barcodeRefs.current[nfe.chaveAcesso]) {
+          const canvas = barcodeRefs.current[nfe.chaveAcesso];
+          if (canvas) {
+            try {
+              // Configurar dimensões do canvas
+              canvas.width = 400;
+              canvas.height = 80;
+              
+              JsBarcode(canvas, nfe.chaveAcesso, {
+                format: "CODE128",
+                width: 1.5,
+                height: 50,
+                displayValue: false,
+                background: "#ffffff",
+                lineColor: "#000000",
+                margin: 5,
+                fontSize: 0
+              });
+              console.log(`Código de barras gerado para NFe: ${nfe.numero}`);
+            } catch (error) {
+              console.error('Erro ao gerar código de barras para NFe:', nfe.numero, error);
+            }
+          }
+        }
+      });
+    }
+  }, [documentType, nfes]);
+
+  // Gerar códigos de barras quando NFes estão disponíveis e é Romaneio Expedição
+  React.useEffect(() => {
+    if (documentType === 'expedicao' && nfes.length > 0) {
+      const timer = setTimeout(generateBarcodes, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [documentType, nfes, generateBarcodes]);
+
+  const handlePrint = (type: 'romaneio' | 'expedicao') => {
+    setDocumentType(type);
+    
+    // Aguardar um pouco para garantir que o estado foi atualizado e elementos renderizados
+    setTimeout(() => {
+      // Se for expedição, regenerar códigos de barras antes da impressão
+      if (type === 'expedicao') {
+        generateBarcodes();
+        
+        // Aguardar mais um pouco para que os códigos sejam gerados
+        setTimeout(() => {
+          performPrint(type);
+        }, 500);
+      } else {
+        performPrint(type);
+      }
+    }, 200);
+  };
+
+  const performPrint = (type: 'romaneio' | 'expedicao') => {
+    if (printRef.current) {
+      // Criar nova janela para impressão
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        let printContent = printRef.current.innerHTML;
+        
+        // Se for Romaneio Expedição, precisamos converter os canvas para imagens
+        if (type === 'expedicao') {
+          const canvasElements = printRef.current.querySelectorAll('canvas');
+          canvasElements.forEach((canvas, index) => {
+            if (canvas) {
+              try {
+                const dataURL = canvas.toDataURL('image/png');
+                const canvasHTML = canvas.outerHTML;
+                const imgHTML = `<img src="${dataURL}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" alt="Código de Barras" />`;
+                printContent = printContent.replace(canvasHTML, imgHTML);
+                console.log(`Canvas convertido para imagem: ${index}`);
+              } catch (error) {
+                console.error('Erro ao converter canvas:', error);
+              }
+            }
+          });
+        }
+        
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>${type === 'romaneio' ? 'Romaneio' : 'Romaneio Expedição'}</title>
+                <style>
+                  * { box-sizing: border-box; margin: 0; padding: 0; }
+                  body { 
+                    font-family: Arial, sans-serif; 
+                    font-size: 12px; 
+                    line-height: 1.2; 
+                    color: #000; 
+                    ${type === 'expedicao' ? 'margin: 15mm;' : 'margin: 20mm;'}
+                  }
+                  @page { 
+                    ${type === 'expedicao' ? 'size: A4 landscape; margin: 15mm;' : 'size: A4 portrait; margin: 20mm;'}
+                  }
+                  .print-content { 
+                    ${type === 'expedicao' ? 'padding: 0; max-width: none;' : 'padding: 10mm;'}
+                  }
+                  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+                  th, td { border: 1px solid #000; padding: 4px; text-align: left; }
+                  th { background-color: #f0f0f0; font-weight: bold; }
+                  .text-center { text-align: center; }
+                  .text-right { text-align: right; }
+                  .font-bold { font-weight: bold; }
+                  .text-xs { font-size: 10px; }
+                  .text-sm { font-size: 11px; }
+                  .text-base { font-size: 14px; }
+                  .border { border: 1px solid #ccc; }
+                  .border-2 { border: 2px solid #000; }
+                  .border-gray-200 { border: 2px solid #ddd; }
+                  .border-gray-300 { border: 1px solid #ccc; }
+                  .border-gray-400 { border: 1px solid #999; }
+                  .border-b { border-bottom: 1px solid #ccc; }
+                  .border-t { border-top: 1px solid #000; }
+                  .mb-1 { margin-bottom: 4px; }
+                  .mb-2 { margin-bottom: 8px; }
+                  .mb-3 { margin-bottom: 12px; }
+                  .p-1 { padding: 4px; }
+                  .p-2 { padding: 8px; }
+                  .p-3 { padding: 12px; }
+                  .p-4 { padding: 16px; }
+                  .flex { display: flex; }
+                  .justify-between { justify-content: space-between; }
+                  .items-center { align-items: center; }
+                  .items-start { align-items: flex-start; }
+                  .gap-3 { gap: 12px; }
+                  .gap-4 { gap: 16px; }
+                  .grid { display: grid; }
+                  .grid-cols-1 { grid-template-columns: 1fr; }
+                  .grid-cols-2 { grid-template-columns: 1fr 1fr; }
+                  .grid-cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+                  .bg-gray-50 { background-color: #f9f9f9; }
+                  .bg-gray-100 { background-color: #f5f5f5; }
+                  .bg-white { background-color: #fff; }
+                  .mt-4 { margin-top: 16px; }
+                  .mt-2 { margin-top: 8px; }
+                  .ml-1 { margin-left: 4px; }
+                  .ml-2 { margin-left: 8px; }
+                  .ml-3 { margin-left: 12px; }
+                  .pt-2 { padding-top: 8px; }
+                  .flex-1 { flex: 1; }
+                  .flex-shrink-0 { flex-shrink: 0; }
+                  .text-gray-600 { color: #666; }
+                  .text-gray-700 { color: #555; }
+                  .text-gray-800 { color: #333; }
+                  .font-medium { font-weight: 500; }
+                  .font-semibold { font-weight: 600; }
+                  .tracking-wider { letter-spacing: 0.05em; }
+                  .inline-block { display: inline-block; }
+                  .block { display: block; }
+                  .mx-auto { margin-left: auto; margin-right: auto; }
+                  
+                  /* Otimizações específicas para códigos de barras */
+                  canvas, img[alt="Código de Barras"] { 
+                    max-width: 100% !important; 
+                    height: auto !important; 
+                    display: block !important;
+                    margin: 0 auto !important;
+                  }
+                  
+                  /* Quebra de página para expedição */
+                  ${type === 'expedicao' ? `
+                    .page-break-inside-avoid { page-break-inside: avoid; }
+                    .nfe-barcode-container { 
+                      margin-bottom: 20px;
+                      page-break-inside: avoid;
+                    }
+                  ` : ''}
+                  
+                  /* Fonte monoespaçada para chaves */
+                  .font-mono { font-family: 'Courier New', monospace; }
+                  .mt-1 { margin-top: 4px; }
+                  .gap-4 { gap: 16px; }
+                  @page { 
+                    margin: 8mm; 
+                    size: A4 ${type === 'expedicao' ? 'landscape' : 'portrait'}; 
+                  }
+                  @media print {
+                    body { print-color-adjust: exact; }
+                  }
+                </style>
+              </head>
+              <body>
+                ${printContent}
+              </body>
+            </html>
+          `);
+          
+          printWindow.document.close();
+          printWindow.focus();
+          
+          // Aguardar carregar e imprimir
+          setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+          }, 1000);
+        }
+      }
+    }
+  };
+
+  // Calcular totais
+  const totais = nfes.reduce((acc, nfe) => ({
+    volumes: acc.volumes + (nfe.volume || 0),
+    peso: acc.peso + (nfe.peso || 0),
+    valor: acc.valor + (nfe.valorDeclarado || 0),
+    m3: acc.m3 + (nfe.m3 || 0)
+  }), { volumes: 0, peso: 0, valor: 0, m3: 0 });
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Printer className="w-5 h-5" />
+            Impressão da Solicitação de Carregamento
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="flex gap-4 mb-4">
+          <Button 
+            onClick={(e) => {
+              e.preventDefault();
+              handlePrint('romaneio');
+            }} 
+            variant="outline"
+            className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Romaneio
+          </Button>
+          <Button 
+            onClick={(e) => {
+              e.preventDefault();
+              handlePrint('expedicao');
+            }} 
+            className="flex-1 bg-blue-600 hover:bg-blue-700"
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Romaneio Expedição
+          </Button>
+          <Button variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
+        </div>
+
+        {/* Conteúdo para impressão */}
+        <div ref={printRef} className="print-content bg-white p-4 text-black">
+          {/* Cabeçalho do documento */}
+          <div className="border-b-2 border-gray-800 pb-2 mb-3">
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-xl font-bold text-gray-800">
+                  {documentType === 'romaneio' ? 'ROMANEIO' : documentType === 'expedicao' ? 'ROMANEIO EXPEDIÇÃO' : 'SOLICITAÇÃO DE CARREGAMENTO'}
+                </h1>
+                <p className="text-sm text-gray-600">Tipo: {formData.tipo || 'Coleta'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-600">Data de Emissão</p>
+                <p className="text-sm font-semibold">{formatDate(new Date())}</p>
+                <p className="text-xs text-gray-600 mt-1">Documento Nº</p>
+                <p className="text-sm font-semibold">{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Dados do Operador Logístico */}
+          <div className="mb-3">
+            <h2 className="text-sm font-bold text-gray-800 border-b border-gray-400 pb-1 mb-2">
+              DADOS DO OPERADOR LOGÍSTICO
+            </h2>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <p className="font-semibold">CROSSWMS LOGÍSTICA LTDA</p>
+                <p>CNPJ: 12.345.678/0001-90</p>
+                <p>Rua das Empresas, 123 - Centro</p>
+                <p>São Paulo - SP - CEP: 01234-567</p>
+              </div>
+              <div>
+                <p>Telefone: (11) 3456-7890</p>
+                <p>Email: operacao@crosswms.com.br</p>
+                <p>Responsável: Sistema CROSSWMS</p>
+                <p>Inscrição Estadual: 123.456.789.012</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Dados do Remetente */}
+          <div className="mb-3">
+            <h2 className="text-sm font-bold text-gray-800 border-b border-gray-400 pb-1 mb-2">
+              DADOS DO REMETENTE
+            </h2>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <p className="font-semibold">{formData.remetente?.razaoSocial || 'Não informado'}</p>
+                <p>CNPJ: {formData.remetente?.cnpj || 'Não informado'}</p>
+                <p>{formData.remetente?.endereco || 'Não informado'}, {formData.remetente?.numero || 'S/N'}</p>
+                <p>{formData.remetente?.bairro || 'Não informado'}</p>
+                <p>{formData.remetente?.cidade || 'Não informado'} - {formData.remetente?.uf || 'XX'}</p>
+                <p>CEP: {formData.remetente?.cep || 'Não informado'}</p>
+              </div>
+              <div>
+                <p>Telefone: {formData.remetente?.telefone || 'Não informado'}</p>
+                <p>Nome Fantasia: {formData.remetente?.nomeFantasia || 'Não informado'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Dados do Destinatário */}
+          <div className="mb-3">
+            <h2 className="text-sm font-bold text-gray-800 border-b border-gray-400 pb-1 mb-2">
+              DADOS DO DESTINATÁRIO
+            </h2>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <p className="font-semibold">{formData.destinatario?.razaoSocial || 'Não informado'}</p>
+                <p>CNPJ: {formData.destinatario?.cnpj || 'Não informado'}</p>
+                <p>{formData.destinatario?.endereco || 'Não informado'}, {formData.destinatario?.numero || 'S/N'}</p>
+                <p>{formData.destinatario?.bairro || 'Não informado'}</p>
+                <p>{formData.destinatario?.cidade || 'Não informado'} - {formData.destinatario?.uf || 'XX'}</p>
+                <p>CEP: {formData.destinatario?.cep || 'Não informado'}</p>
+              </div>
+              <div>
+                <p>Telefone: {formData.destinatario?.telefone || 'Não informado'}</p>
+                <p>Nome Fantasia: {formData.destinatario?.nomeFantasia || 'Não informado'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Relação de Notas Fiscais - Apenas para Romaneio (não Expedição) */}
+          {nfes.length > 0 && documentType === 'romaneio' && (
+            <div className="mb-3">
+              <h2 className="text-sm font-bold text-gray-800 border-b border-gray-400 pb-1 mb-2">
+                RELAÇÃO DE NOTAS FISCAIS
+              </h2>
+              
+              <table className="w-full border-collapse border border-gray-400 text-xs">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-gray-400 p-1 text-left">NFe</th>
+                    <th className="border border-gray-400 p-1 text-left">Remetente</th>
+                    <th className="border border-gray-400 p-1 text-left">Destinatário</th>
+                    <th className="border border-gray-400 p-1 text-center">Vol</th>
+                    <th className="border border-gray-400 p-1 text-center">Peso</th>
+                    <th className="border border-gray-400 p-1 text-center">M³</th>
+                    <th className="border border-gray-400 p-1 text-center">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {nfes.map((nfe, index) => (
+                    <tr key={index}>
+                      <td className="border border-gray-400 p-1">
+                        <div className="font-medium">{nfe.numero}</div>
+                        <div className="text-xs text-gray-600">#{nfe.chaveAcesso?.slice(-8)}</div>
+                      </td>
+                      <td className="border border-gray-400 p-1">
+                        <div className="font-medium">{nfe.remetente?.razaoSocial}</div>
+                        <div className="text-gray-600">{nfe.remetente?.cnpj}</div>
+                        <div className="text-gray-600">
+                          {nfe.remetente?.cidade ? `${nfe.remetente.cidade}-${nfe.remetente.uf}` : nfe.remetente?.uf}
+                        </div>
+                      </td>
+                      <td className="border border-gray-400 p-1">
+                        <div className="font-medium">{nfe.destinatario?.razaoSocial}</div>
+                        <div className="text-gray-600">{nfe.destinatario?.cnpj}</div>
+                        <div className="text-gray-600">
+                          {nfe.destinatario?.cidade ? `${nfe.destinatario.cidade}-${nfe.destinatario.uf}` : nfe.destinatario?.uf}
+                        </div>
+                      </td>
+                      <td className="border border-gray-400 p-1 text-center">{nfe.volume || 1}</td>
+                      <td className="border border-gray-400 p-1 text-center">{(nfe.peso || 0).toFixed(2)}</td>
+                      <td className="border border-gray-400 p-1 text-center">{(nfe.m3 || 0).toFixed(3)}</td>
+                      <td className="border border-gray-400 p-1 text-center">{(nfe.valorDeclarado || 0).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-100 font-bold">
+                    <td className="border border-gray-400 p-2" colSpan={3}>TOTAIS</td>
+                    <td className="border border-gray-400 p-2 text-center">{totais.volumes}</td>
+                    <td className="border border-gray-400 p-2 text-center">{totais.peso.toFixed(2)}</td>
+                    <td className="border border-gray-400 p-2 text-center">{totais.m3.toFixed(3)}</td>
+                    <td className="border border-gray-400 p-2 text-center">{totais.valor.toFixed(2)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+
+          {/* Códigos de Barras das NFes - Apenas para Romaneio Expedição */}
+          {nfes.length > 0 && documentType === 'expedicao' && (
+            <div className="mb-3">
+              <h2 className="text-sm font-bold text-gray-800 border-b border-gray-400 pb-1 mb-3">
+                CÓDIGOS DE BARRAS - NFe MODELO 55
+              </h2>
+              <div className="grid grid-cols-1 gap-4">
+                {nfes.map((nfe, index) => (
+                  <div key={index} className="border-2 border-gray-400 bg-white page-break-inside-avoid nfe-barcode-container">
+                    {/* Cabeçalho da NFe */}
+                    <div className="bg-gray-100 p-2 border-b border-gray-400">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="font-bold text-base">NFe: {nfe.numero}</span>
+                          <span className="text-sm text-gray-600 ml-3">Chave: {nfe.chaveAcesso}</span>
+                        </div>
+                        <div className="text-right text-xs">
+                          <div><strong>Peso:</strong> {(nfe.peso || 0).toFixed(2)} kg</div>
+                          <div><strong>Volumes:</strong> {nfe.volume || 1}</div>
+                          <div><strong>Valor:</strong> R$ {(nfe.valorDeclarado || 0).toFixed(2)}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Informações de Remetente e Destinatário */}
+                    <div className="p-3 grid grid-cols-2 gap-4 border-b border-gray-300">
+                      <div>
+                        <div className="font-semibold text-xs text-gray-700 mb-1">REMETENTE:</div>
+                        <div className="text-sm font-medium">{nfe.remetente?.razaoSocial || 'Não informado'}</div>
+                        <div className="text-xs text-gray-600">
+                          {nfe.remetente?.cidade ? `${nfe.remetente.cidade} - ${nfe.remetente.uf}` : nfe.remetente?.uf || 'N/I'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-xs text-gray-700 mb-1">DESTINATÁRIO:</div>
+                        <div className="text-sm font-medium">{nfe.destinatario?.razaoSocial || 'Não informado'}</div>
+                        <div className="text-xs text-gray-600">
+                          {nfe.destinatario?.cidade ? `${nfe.destinatario.cidade} - ${nfe.destinatario.uf}` : nfe.destinatario?.uf || 'N/I'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Código de Barras Centralizado */}
+                    <div className="p-4 text-center bg-white">
+                      <div className="inline-block border-2 border-gray-200 p-3 bg-gray-50">
+                        <canvas
+                          ref={(el) => {
+                            if (el && nfe.chaveAcesso) {
+                              barcodeRefs.current[nfe.chaveAcesso] = el;
+                            }
+                          }}
+                          className="mx-auto block"
+                          style={{ maxWidth: '100%' }}
+                        />
+                        <div className="text-xs text-gray-700 mt-2 font-mono tracking-wider">
+                          {nfe.chaveAcesso}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Informações Complementares - Sempre mostrar */}
+          <div className="mb-3">
+            <h2 className="text-sm font-bold text-gray-800 border-b border-gray-400 pb-1 mb-2">
+              INFORMAÇÕES COMPLEMENTARES
+            </h2>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <p><span className="font-semibold">Prazo de Coleta:</span> Conforme acordado</p>
+                <p><span className="font-semibold">Modalidade:</span> {formData.tipo || 'Coleta'}</p>
+                <p><span className="font-semibold">Tipo de Veículo:</span> A definir</p>
+              </div>
+              <div>
+                <p><span className="font-semibold">Observações:</span> {formData.observacoes || 'Nenhuma observação'}</p>
+                <p><span className="font-semibold">Valor Total Declarado:</span> R$ {totais.valor.toFixed(2)}</p>
+                <p><span className="font-semibold">Peso Total:</span> {totais.peso.toFixed(2)} kg</p>
+              </div>
+            </div>
+          </div>
+
+
+
+          {/* Rodapé com assinaturas */}
+          <div className="mt-4 pt-2 border-t border-gray-400">
+            <div className="grid grid-cols-4 gap-3 text-center text-xs">
+              <div>
+                <div className="border-t border-gray-400 pt-1 mt-4">
+                  <p className="font-semibold">Remetente</p>
+                  <p className="text-gray-600">Assinatura e Carimbo</p>
+                </div>
+              </div>
+              <div>
+                <div className="border-t border-gray-400 pt-1 mt-4">
+                  <p className="font-semibold">Transportadora</p>
+                  <p className="text-gray-600">Conferente</p>
+                </div>
+              </div>
+              <div>
+                <div className="border-t border-gray-400 pt-1 mt-4">
+                  <p className="font-semibold">Transportadora</p>
+                  <p className="text-gray-600">Expedição</p>
+                </div>
+              </div>
+              <div>
+                <div className="border-t border-gray-400 pt-1 mt-4">
+                  <p className="font-semibold">Destinatário</p>
+                  <p className="text-gray-600">Assinatura e Carimbo</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="text-center mt-2 text-xs text-gray-500">
+              <p>Documento gerado automaticamente pelo Sistema CROSSWMS</p>
+              <p>Data/Hora de geração: {formatDate(new Date())}</p>
+            </div>
+          </div>
+        </div>
+
+
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default OrdemCarregamentoForm;

@@ -1,0 +1,800 @@
+/* Micro-interactions for Enhanced User Experience */
+
+/* Button Hover and Focus States */
+.btn-micro {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-micro:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-micro:active {
+  transform: translateY(0);
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ripple Effect for Buttons */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn-ripple:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Input Field Focus and Validation States */
+.input-micro {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.input-micro:focus {
+  transform: scale(1.02);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-micro.error {
+  animation: shake 0.5s ease-in-out;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.input-micro.success {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Shake Animation for Form Errors */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+  20%, 40%, 60%, 80% { transform: translateX(3px); }
+}
+
+/* Pulse Animation for Loading States */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse-animation {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Floating Label Animation */
+.floating-label {
+  position: relative;
+}
+
+.floating-label label {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: white;
+  padding: 0 4px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.floating-label input:focus + label,
+.floating-label input:not(:placeholder-shown) + label {
+  top: 0;
+  font-size: 12px;
+  color: #3b82f6;
+  transform: translateY(-50%);
+}
+
+/* Card Hover Effects */
+.card-micro {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-micro:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading Spinner Overlay */
+.spinner-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+  z-index: 10;
+}
+
+/* Progress Bar Animation */
+.progress-bar {
+  position: relative;
+  overflow: hidden;
+  background: #e5e7eb;
+  border-radius: 4px;
+  height: 4px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  border-radius: 4px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Toggle Switch Animation */
+.toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  background: #d1d5db;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.toggle-switch.active {
+  background: #3b82f6;
+}
+
+.toggle-switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-switch.active::before {
+  transform: translateX(24px);
+}
+
+/* Dropdown Animation */
+.dropdown-enter {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+}
+
+.dropdown-enter-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dropdown-exit {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.dropdown-exit-active {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Badge Pulse Animation */
+.badge-pulse {
+  animation: badge-pulse 2s infinite;
+}
+
+@keyframes badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+/* Success/Error Toast Slide-in Animation */
+.toast-slide-in {
+  animation: toast-slide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes toast-slide {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* List item interactions */
+.list-item-interactive {
+  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.list-item-interactive:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+/* Form Field Error Highlight */
+.field-error {
+  animation: field-error-pulse 0.6s ease-in-out;
+}
+
+@keyframes field-error-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Loading Dots Animation */
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.loading-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: loading-dots 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes loading-dots {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Icon Rotation on Hover */
+.icon-rotate:hover {
+  transform: rotate(180deg);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth Color Transitions */
+.color-transition {
+  transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Scale on Click */
+.scale-click:active {
+  transform: scale(0.98);
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Notification Badge Bounce */
+.notification-bounce {
+  animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0,0,0);
+  }
+  40%, 43% {
+    transform: translate3d(0,-10px,0);
+  }
+  70% {
+    transform: translate3d(0,-5px,0);
+  }
+  90% {
+    transform: translate3d(0,-2px,0);
+  }
+}
+
+/* Fade In Animation */
+.fade-in {
+  animation: fade-in 0.5s ease-in-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Slide Up Animation */
+.slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Advanced Button Interactions */
+.btn-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-glow::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6, #ec4899, #f59e0b);
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn-glow:hover::before {
+  opacity: 0.7;
+  animation: glow-pulse 2s infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Button Loading State with Spinner */
+.btn-loading {
+  position: relative;
+  pointer-events: none;
+  color: transparent !important;
+}
+
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: button-spin 1s linear infinite;
+}
+
+@keyframes button-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Enhanced Form Validation States */
+.form-field {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-field.validating {
+  position: relative;
+}
+
+.form-field.validating::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border: 2px solid #d1d5db;
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: validation-spin 1s linear infinite;
+}
+
+@keyframes validation-spin {
+  to { transform: rotate(360deg); }
+}
+
+.form-field.valid::after {
+  content: '✓';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #10b981;
+  font-weight: bold;
+  animation: checkmark-appear 0.3s ease-out;
+}
+
+.form-field.invalid::after {
+  content: '✕';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #ef4444;
+  font-weight: bold;
+  animation: error-appear 0.3s ease-out;
+}
+
+@keyframes checkmark-appear {
+  from {
+    transform: translateY(-50%) scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes error-appear {
+  from {
+    transform: translateY(-50%) scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Interactive Button Press Effect */
+.btn-press {
+  transform-style: preserve-3d;
+  transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-press:active {
+  transform: translateY(2px) scale(0.98);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Magnetic Button Effect */
+.btn-magnetic {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.btn-magnetic:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* Form Field Focus Glow */
+.input-glow:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1),
+              0 0 20px rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+}
+
+/* Typewriter Animation for Labels */
+.typewriter {
+  overflow: hidden;
+  border-right: 2px solid #3b82f6;
+  white-space: nowrap;
+  animation: typewriter 2s steps(40, end), blink-caret 0.75s step-end infinite;
+}
+
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent; }
+  50% { border-color: #3b82f6; }
+}
+
+/* Progressive Form Fill Animation */
+.form-progress {
+  position: relative;
+  overflow: hidden;
+}
+
+.form-progress::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #3b82f6, transparent);
+  animation: form-progress-slide 2s infinite;
+}
+
+@keyframes form-progress-slide {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Enhanced Toast Notifications */
+.toast-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  animation: toast-bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.toast-error {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  animation: toast-shake-in 0.5s ease-out;
+}
+
+.toast-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  animation: toast-slide-down 0.3s ease-out;
+}
+
+@keyframes toast-bounce-in {
+  0% {
+    transform: translateX(100%) scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: translateX(-10%) scale(1.1);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-shake-in {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  10%, 90% {
+    transform: translateX(-2%);
+  }
+  20%, 80% {
+    transform: translateX(2%);
+  }
+  30%, 50%, 70% {
+    transform: translateX(-1%);
+  }
+  40%, 60% {
+    transform: translateX(1%);
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-slide-down {
+  from {
+    transform: translateY(-100%) translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Card Flip Animation */
+.card-flip {
+  perspective: 1000px;
+}
+
+.card-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.card-flip:hover .card-flip-inner {
+  transform: rotateY(180deg);
+}
+
+.card-flip-front, .card-flip-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: inherit;
+}
+
+.card-flip-back {
+  transform: rotateY(180deg);
+}
+
+/* Morphing Button States */
+.btn-morph {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-morph.success {
+  background: #10b981;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: morph-to-circle 0.4s ease-out;
+}
+
+.btn-morph.error {
+  background: #ef4444;
+  animation: error-shake 0.5s ease-in-out;
+}
+
+@keyframes morph-to-circle {
+  0% {
+    border-radius: 6px;
+    width: auto;
+    height: auto;
+  }
+  100% {
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@keyframes error-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Skeleton Loading Enhancement */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Interactive List Items */
+.list-item-interactive {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+}
+
+.list-item-interactive:hover {
+  transform: translateX(8px);
+  background: rgba(59, 130, 246, 0.05);
+  box-shadow: 4px 0 8px rgba(59, 130, 246, 0.1);
+}
+
+.list-item-interactive::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #3b82f6;
+  transform: scaleY(0);
+  transition: transform 0.3s ease;
+}
+
+.list-item-interactive:hover::before {
+  transform: scaleY(1);
+}
+
+/* Focus Trap Animation */
+.focus-trap {
+  position: relative;
+}
+
+.focus-trap::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid transparent;
+  border-radius: inherit;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.focus-trap:focus-visible::after {
+  border-color: #3b82f6;
+  animation: focus-pulse 2s infinite;
+}
+
+@keyframes focus-pulse {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
+/* Responsive Micro-interactions */
+@media (max-width: 768px) {
+  .btn-micro:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  
+  .card-micro:hover {
+    transform: translateY(-1px);
+  }
+  
+  .btn-magnetic:hover {
+    transform: translateY(-1px) scale(1.02);
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .btn-micro:hover,
+  .card-micro:hover,
+  .input-micro:focus {
+    transform: none;
+  }
+}

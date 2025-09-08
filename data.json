@@ -1,0 +1,17 @@
+
+{
+  "name": "Sample Data",
+  "version": "1.0.0",
+  "description": "A sample JSON file",
+  "data": {
+    "items": [],
+    "settings": {
+      "enabled": true,
+      "theme": "default"
+    }
+  },
+  "metadata": {
+    "created": "2024-01-01",
+    "author": "User"
+  }
+}

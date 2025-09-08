@@ -1,0 +1,37 @@
+{
+  "name": "crosswms-sistema",
+  "version": "2.1.0",
+  "description": "Sistema de Gestão Logística Multi-Tenant para o mercado brasileiro",
+  "main": "server/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_ENV=development tsx server/index.ts",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --target=node18 --outfile=dist/server.js --external:pg-native",
+    "start": "node dist/server.js",
+    "preview": "vite preview",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:generate": "drizzle-kit generate"
+  },
+  "keywords": [
+    "logistics",
+    "warehouse-management",
+    "nfe",
+    "brazil",
+    "multi-tenant",
+    "react",
+    "typescript",
+    "nodejs"
+  ],
+  "author": "Leonardo Bandeira <admin@crosswms.com.br>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crosswms/crosswms-sistema.git"
+  },
+  "homepage": "https://www.crosswms.com.br",
+  "bugs": {
+    "url": "https://github.com/crosswms/crosswms-sistema/issues"
+  }
+}

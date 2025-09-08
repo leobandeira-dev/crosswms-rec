@@ -1,0 +1,1 @@
+// Backup do arquivo corrompido para referência

@@ -1,0 +1,10 @@
+
+# This file was generated with Supabase CLI.
+# You can edit this file directly
+
+# realtime configuration for the tables
+[realtime]
+enabled = true
+
+[realtime.publicize]
+tables = ["empresas"]

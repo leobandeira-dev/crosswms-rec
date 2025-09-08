@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { 
+  height: 100%; 
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Cores básicas do CrossWMS */
+:root {
+  --cross-blue: #0066CC;
+  --cross-blue-dark: #0052A3;
+  --cross-gray: #6B7280;
+  --cross-gray-dark: #4B5563;
+}
+
+.bg-cross-blue { background-color: var(--cross-blue); }
+.bg-cross-blueDark { background-color: var(--cross-blue-dark); }
+.text-cross-blue { color: var(--cross-blue); }
+.text-cross-gray { color: var(--cross-gray); }
+.border-cross-blue { border-color: var(--cross-blue); }
+
+.hover\:bg-cross-blueDark:hover { background-color: var(--cross-blue-dark); }

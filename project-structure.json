@@ -1,0 +1,35 @@
+{
+  "Sistema CrossWMS": {
+    "Frontend (React + TypeScript)": [
+      "client/src/components/ - Componentes reutilizáveis",
+      "client/src/pages/ - Páginas da aplicação",
+      "client/src/hooks/ - Hooks customizados",
+      "client/src/lib/ - Utilitários e configurações"
+    ],
+    "Backend (Node.js + Express)": [
+      "server/routes.ts - Rotas da API",
+      "server/storage.ts - Camada de dados",
+      "server/index.ts - Servidor Express"
+    ],
+    "Banco de Dados": [
+      "shared/schema.ts - Schema Drizzle ORM",
+      "migrations/ - Migrações do banco"
+    ],
+    "Configurações": [
+      "package.json - Dependências e scripts",
+      "tsconfig.json - Configuração TypeScript",
+      "tailwind.config.ts - Configuração Tailwind",
+      "vite.config.ts - Configuração Vite"
+    ],
+    "Documentação": [
+      "README.md - Documentação principal",
+      "replit.md - Histórico e arquitetura",
+      "ARQUITETURA_MULTI_TENANT.md - Documentação técnica",
+      "SECURITY_IMPROVEMENTS.md - Melhorias de segurança"
+    ],
+    "Integrações": [
+      "nsdocs.api.ts - Integração NSDocs API",
+      "cloudflare-setup.js - Configuração Cloudflare"
+    ]
+  }
+}
