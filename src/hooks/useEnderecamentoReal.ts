@@ -18,14 +18,146 @@ interface CaminhaoLayout {
   [key: string]: Volume | null;
 }
 
+// Dados mock para demonstração
+const mockVolumes: Volume[] = [
+  {
+    id: "1",
+    codigo: "VOL-001-2025",
+    notaFiscal: "12345",
+    destinatario: "TechCorp Ltda",
+    cidade: "São Paulo - SP",
+    peso: "5.2",
+    status: "pendente",
+    posicao: undefined
+  },
+  {
+    id: "2",
+    codigo: "VOL-002-2025",
+    notaFiscal: "12346",
+    destinatario: "OfficeSupply S.A.",
+    cidade: "Rio de Janeiro - RJ",
+    peso: "2.8",
+    status: "pendente",
+    posicao: undefined
+  },
+  {
+    id: "3",
+    codigo: "VOL-003-2025",
+    notaFiscal: "12347",
+    destinatario: "PharmaCorp",
+    cidade: "Belo Horizonte - MG",
+    peso: "1.5",
+    status: "pendente",
+    posicao: undefined
+  },
+  {
+    id: "4",
+    codigo: "VOL-004-2025",
+    notaFiscal: "12348",
+    destinatario: "FashionStore",
+    cidade: "Porto Alegre - RS",
+    peso: "3.2",
+    status: "pendente",
+    posicao: undefined
+  },
+  {
+    id: "5",
+    codigo: "VOL-005-2025",
+    notaFiscal: "12349",
+    destinatario: "ToolMaster Ind.",
+    cidade: "Salvador - BA",
+    peso: "8.5",
+    status: "pendente",
+    posicao: undefined
+  },
+  {
+    id: "6",
+    codigo: "VOL-006-2025",
+    notaFiscal: "12350",
+    destinatario: "ElectroTech",
+    cidade: "Brasília - DF",
+    peso: "4.1",
+    status: "pendente",
+    posicao: undefined
+  }
+];
+
+const mockCaminhaoLayout: CaminhaoLayout = {
+  "E1": {
+    id: "7",
+    codigo: "VOL-007-2025",
+    notaFiscal: "12351",
+    destinatario: "AutoParts Corp",
+    cidade: "Curitiba - PR",
+    peso: "6.3",
+    status: "posicionado",
+    posicao: "E1"
+  },
+  "C2": {
+    id: "8",
+    codigo: "VOL-008-2025",
+    notaFiscal: "12352",
+    destinatario: "FoodSupply Ltd",
+    cidade: "Fortaleza - CE",
+    peso: "2.1",
+    status: "posicionado",
+    posicao: "C2"
+  },
+  "D3": {
+    id: "9",
+    codigo: "VOL-009-2025",
+    notaFiscal: "12353",
+    destinatario: "MedEquip S.A.",
+    cidade: "Recife - PE",
+    peso: "3.7",
+    status: "posicionado",
+    posicao: "D3"
+  }
+};
+
 export const useEnderecamentoReal = () => {
-  const [ordemSelecionada, setOrdemSelecionada] = useState<string>('');
-  const [volumes, setVolumes] = useState<Volume[]>([]);
-  const [volumesFiltrados, setVolumesFiltrados] = useState<Volume[]>([]);
+  const [ordemSelecionada, setOrdemSelecionada] = useState<string>('ORD-2025-001');
+  const [volumes, setVolumes] = useState<Volume[]>(mockVolumes);
+  const [volumesFiltrados, setVolumesFiltrados] = useState<Volume[]>(mockVolumes);
   const [selecionados, setSelecionados] = useState<string[]>([]);
-  const [caminhaoLayout, setCaminhaoLayout] = useState<CaminhaoLayout>({});
+  const [caminhaoLayout, setCaminhaoLayout] = useState<CaminhaoLayout>(mockCaminhaoLayout);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [numeroLinhas, setNumeroLinhas] = useState<number>(20);
+
+  // Função para gerar layout dinâmico baseado no número de linhas
+  const gerarLayoutDinamico = useCallback((linhas: number, layoutAtual: CaminhaoLayout = caminhaoLayout) => {
+    const novoLayout: any[] = [];
+    const colunas: Array<'esquerda' | 'centro' | 'direita'> = ['esquerda', 'centro', 'direita'];
+    
+    for (let linha = 1; linha <= linhas; linha++) {
+      for (const coluna of colunas) {
+        const cellId = `${coluna.charAt(0).toUpperCase()}${linha}`;
+        novoLayout.push({
+          id: cellId,
+          coluna,
+          linha,
+          volumes: layoutAtual[cellId] ? [layoutAtual[cellId]] : []
+        });
+      }
+    }
+    
+    return novoLayout;
+  }, [caminhaoLayout]);
+
+  // Função para atualizar número de linhas
+  const atualizarNumeroLinhas = useCallback((novoNumeroLinhas: number) => {
+    setNumeroLinhas(novoNumeroLinhas);
+    // Limpar posições que excedem o novo número de linhas
+    const novoCaminhaoLayout: CaminhaoLayout = {};
+    Object.entries(caminhaoLayout).forEach(([posicao, volume]) => {
+      const linha = parseInt(posicao.substring(1));
+      if (linha <= novoNumeroLinhas) {
+        novoCaminhaoLayout[posicao] = volume;
+      }
+    });
+    setCaminhaoLayout(novoCaminhaoLayout);
+  }, [caminhaoLayout]);
 
   // CREATE - Criar nova ordem de carregamento (se necessário)
   const criarOrdemCarregamento = useCallback(async (dadosOrdem: any) => {
@@ -236,6 +368,13 @@ export const useEnderecamentoReal = () => {
 
   // UPDATE - Atualizar status do volume
   const atualizarStatusVolume = useCallback(async (volumeId: string, novoStatus: string) => {
+    // Para dados mock, apenas simular a atualização sem chamada real
+    const isMockVolume = mockVolumes.some(mv => mv.id === volumeId);
+    if (isMockVolume) {
+      console.log(`Status do volume ${volumeId} atualizado para ${novoStatus} (modo mock)`);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('etiquetas')
@@ -266,20 +405,20 @@ export const useEnderecamentoReal = () => {
   // Submeter formulário de ordem
   const handleOrderFormSubmit = useCallback(async (data: any) => {
     console.log('Submetendo formulário de ordem:', data);
-    const numeroOrdem = data.orderNumber;
+    const numeroOrdem = data.numeroOC || data.orderNumber || 'ORD-2025-001';
     
-    if (!numeroOrdem) {
-      toast({
-        title: "Número da ordem obrigatório",
-        description: "Por favor, informe o número da ordem de carregamento.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setOrdemSelecionada(numeroOrdem);
-    await buscarVolumesOrdem(numeroOrdem);
-  }, [buscarVolumesOrdem]);
+    
+    // Para demonstração, usar dados mock
+    setVolumes(mockVolumes);
+    setVolumesFiltrados(mockVolumes);
+    setCaminhaoLayout(mockCaminhaoLayout);
+    
+    toast({
+      title: "Ordem carregada",
+      description: `Ordem ${numeroOrdem} carregada com dados de demonstração.`,
+    });
+  }, []);
 
   // Filtrar volumes
   const filtrarVolumes = useCallback((filtro: string) => {
@@ -364,6 +503,18 @@ export const useEnderecamentoReal = () => {
     setIsLoading(true);
     try {
       console.log('Salvando layout:', caminhaoLayout);
+
+      // Para dados mock, simular salvamento sem chamada real
+      const hasMockVolumes = volumes.length > 0 && volumes.some(v => mockVolumes.some(mv => mv.id === v.id));
+      if (hasMockVolumes) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay
+        toast({
+          title: "Layout salvo",
+          description: "Layout salvo com sucesso (modo demonstração).",
+        });
+        setIsLoading(false);
+        return;
+      }
 
       // Buscar a ordem de carregamento
       const { data: ordem, error: errorOrdem } = await supabase
@@ -528,6 +679,7 @@ export const useEnderecamentoReal = () => {
     caminhaoLayout,
     confirmDialogOpen,
     isLoading,
+    numeroLinhas,
     setConfirmDialogOpen,
     handleOrderFormSubmit,
     filtrarVolumes,
@@ -537,6 +689,8 @@ export const useEnderecamentoReal = () => {
     removerVolume,
     saveLayout,
     allVolumesPositioned,
+    gerarLayoutDinamico,
+    atualizarNumeroLinhas,
     // Novas funções CRUD
     criarOrdemCarregamento,
     buscarVolumesOrdem,

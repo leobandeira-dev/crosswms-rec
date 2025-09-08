@@ -4,7 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Package } from 'lucide-react';
 
-import { Volume, SearchType } from '@/types/enderecamento.types';
+interface Volume {
+  id: string;
+  codigo: string;
+  notaFiscal: string;
+  produto: string;
+  peso: string;
+  dimensoes: string;
+  fragil: boolean;
+  posicaoAtual?: string;
+  descricao: string;
+  posicionado: boolean;
+  etiquetaMae: string;
+  fornecedor: string;
+  quantidade: number;
+  etiquetado: boolean;
+}
 
 interface VolumeListProps {
   volumes: Volume[];
@@ -62,13 +77,13 @@ const VolumeList: React.FC<VolumeListProps> = ({
                       onChange={() => onSelectionToggle(volume.id)}
                       className="mr-2" 
                     />
-                    <span className="font-medium">{volume.id}</span>
+                    <span className="font-medium">{volume.codigo}</span>
                     {volume.fragil && (
                       <span className="ml-2 text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">Frágil</span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-600">{volume.descricao}</p>
-                  <p className="text-xs text-gray-500">Peso: {volume.peso}</p>
+                  <p className="text-sm text-gray-600">{volume.produto}</p>
+                  <p className="text-xs text-gray-500">Peso: {volume.peso}kg | {volume.dimensoes}</p>
                   <div className="mt-1 text-xs flex flex-col">
                     <span className="text-gray-600">Etiqueta: {volume.etiquetaMae}</span>
                     <span className="text-gray-600">NF: {volume.notaFiscal}</span>

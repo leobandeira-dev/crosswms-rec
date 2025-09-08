@@ -7,13 +7,19 @@ import TruckCell from './TruckCell';
 
 interface Volume {
   id: string;
-  descricao: string;
+  codigo: string;
+  notaFiscal: string;
+  produto: string;
   peso: string;
+  dimensoes: string;
   fragil: boolean;
+  posicaoAtual?: string;
+  descricao: string;
   posicionado: boolean;
   etiquetaMae: string;
-  notaFiscal: string;
   fornecedor: string;
+  quantidade: number;
+  etiquetado: boolean;
 }
 
 interface CellLayout {
@@ -49,7 +55,8 @@ const TruckLayoutGrid: React.FC<TruckLayoutGridProps> = ({
   onPrintLayout
 }) => {
   // Agrupar o layout por linhas para exibição
-  const layoutPorLinhas = Array.from({ length: 20 }, (_, i) => {
+  const maxLinhas = Math.max(...layout.map(c => c.linha), 1);
+  const layoutPorLinhas = Array.from({ length: maxLinhas }, (_, i) => {
     const linha = i + 1;
     return {
       linha,

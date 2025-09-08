@@ -5,7 +5,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 // Hook atualizado para usar dados reais
 import { useEnderecamentoReal } from '@/hooks/useEnderecamentoReal';
-import { initializeLayout } from '@/utils/layoutUtils';
 
 // Components
 import HistoricoLayout from '@/components/carregamento/enderecamento/HistoricoLayout';
@@ -21,6 +20,7 @@ const EnderecamentoCaminhao: React.FC = () => {
     caminhaoLayout,
     confirmDialogOpen,
     isLoading,
+    numeroLinhas,
     setConfirmDialogOpen,
     handleOrderFormSubmit,
     filtrarVolumes,
@@ -29,30 +29,15 @@ const EnderecamentoCaminhao: React.FC = () => {
     moverVolumesSelecionados,
     removerVolume,
     saveLayout,
-    allVolumesPositioned
+    allVolumesPositioned,
+    gerarLayoutDinamico,
+    atualizarNumeroLinhas
   } = useEnderecamentoReal();
 
   // Converter o caminhaoLayout (objeto) para o formato esperado pelo TruckLayoutGrid (array)
   const layoutArray = React.useMemo(() => {
-    const baseLayout = initializeLayout();
-    
-    // Mapear os volumes do caminhaoLayout para o formato de células
-    return baseLayout.map(celula => ({
-      ...celula,
-      volumes: Object.entries(caminhaoLayout)
-        .filter(([posicao]) => posicao === celula.id)
-        .map(([, volume]) => ({
-          id: volume!.id,
-          descricao: volume!.codigo,
-          peso: volume!.peso,
-          fragil: false,
-          posicionado: true,
-          etiquetaMae: '',
-          notaFiscal: volume!.notaFiscal,
-          fornecedor: volume!.destinatario
-        }))
-    }));
-  }, [caminhaoLayout]);
+    return gerarLayoutDinamico(numeroLinhas, caminhaoLayout);
+  }, [gerarLayoutDinamico, numeroLinhas, caminhaoLayout]);
   
   return (
     <MainLayout title="Endereçamento no Caminhão">
@@ -74,6 +59,7 @@ const EnderecamentoCaminhao: React.FC = () => {
             volumesFiltrados={volumesFiltrados}
             selecionados={selecionados}
             caminhaoLayout={layoutArray}
+            numeroLinhas={numeroLinhas}
             onOrderFormSubmit={handleOrderFormSubmit}
             onFilter={filtrarVolumes}
             onSelectionToggle={toggleSelecao}
@@ -81,6 +67,7 @@ const EnderecamentoCaminhao: React.FC = () => {
             onCellClick={moverVolumesSelecionados}
             onRemoveVolume={removerVolume}
             onSaveLayout={saveLayout}
+            onUpdateLinhas={atualizarNumeroLinhas}
             hasSelectedVolumes={selecionados.length > 0}
             allVolumesPositioned={allVolumesPositioned}
           />

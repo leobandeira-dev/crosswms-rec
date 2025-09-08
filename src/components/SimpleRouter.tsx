@@ -14,12 +14,16 @@ import Index from '@/pages/Index';
 import AuthPage from '@/pages/AuthPage';
 import ModernAuthPage from '@/pages/ModernAuthPage';
 import LandingPage from '@/pages/LandingPage';
+import LandingPageClient from '@/pages/LandingPageClient';
+import LandingPrincipalAtualizada from '@/pages/LandingPrincipalAtualizada';
 import LandingSegmentada from '@/pages/LandingSegmentada';
 import LandingPrincipalLimpa from '@/pages/LandingPrincipalLimpa';
 import Home from '@/pages/Home';
 import TestPage from '@/pages/TestPage';
 import LoginPage from '@/pages/LoginPage';
+import LoginPageClient from '@/pages/LoginPageClient';
 import CrossWMSAuthPage from '@/pages/CrossWMSAuthPage';
+import AuthPageClient from '@/pages/AuthPageClient';
 import DashboardOtimizado from '@/pages/DashboardOtimizado';
 import UserProfilePage from '@/pages/UserProfilePage';
 import ResetPassword from '@/pages/ResetPassword';
@@ -112,6 +116,7 @@ import OrdemCarregamento from '@/pages/armazenagem/OrdemCarregamento';
 import SeparacaoCarregamento from '@/pages/armazenagem/carregamento/SeparacaoCarregamento';
 import ConferenciaCarregamento from '@/pages/armazenagem/ConferenciaCarregamento';
 import EnderecamentoCarregamento from '@/pages/armazenagem/EnderecamentoCarregamento';
+import EnderecamentoCaminhao from '@/pages/armazenagem/carregamento/EnderecamentoCaminhao';
 import ChecklistCarregamento from '@/pages/armazenagem/ChecklistCarregamento';
 import ExpedicaoCarregamento from '@/pages/armazenagem/carregamento/ExpedicaoCarregamento';
 import FilaX from '@/components/armazenagem/FilaX';
@@ -155,7 +160,7 @@ export const SimpleRouter = () => {
   switch (path) {
     // Rotas públicas (não requerem autenticação)
     case '/':
-      return <CrossWMSAuthPage />;
+      return <LandingPrincipalAtualizada />;
     case '/home':
       return <Home />;
     case '/sistema':
@@ -165,9 +170,9 @@ export const SimpleRouter = () => {
     case '/landing-antiga':
       return <PublicRoute><LandingPage /></PublicRoute>;
     case '/login':
-      return <CrossWMSAuthPage />;
+      return <LoginPageClient />;
     case '/auth':
-      return <CrossWMSAuthPage />;
+      return <LoginPageClient />;
     case '/reset-password':
       return <PublicRoute><ResetPasswordPage /></PublicRoute>;
     
@@ -335,7 +340,7 @@ export const SimpleRouter = () => {
     case '/armazenagem/carregamento/conferencia':
       return <ConferenciaCarregamento />;
     case '/armazenagem/carregamento/enderecamento':
-      return <EnderecamentoCarregamento />;
+      return <EnderecamentoCaminhao />;
     case '/armazenagem/posicionamento':
       return <Enderecamento />;
     case '/armazenagem/carregamento/checklist':

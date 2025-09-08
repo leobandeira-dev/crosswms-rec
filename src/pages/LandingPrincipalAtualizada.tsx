@@ -4,13 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle, Package, Users, Truck, BarChart3, Shield, Star, ArrowRight, Menu, X, Cloud, FileText } from 'lucide-react';
 import { useLocation } from 'wouter';
 
 const LandingPrincipalAtualizada: React.FC = () => {
   const [, setLocation] = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('visao-geral');
 
   const [selectedModules, setSelectedModules] = useState({
     moduloColetas: false,
@@ -79,43 +79,84 @@ const LandingPrincipalAtualizada: React.FC = () => {
     const element = document.getElementById(sectionId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+      setActiveSection(sectionId);
     }
     setIsMenuOpen(false);
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
       {/* Header/Navbar */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
                 <Truck className="w-6 h-6 text-white" />
               </div>
-              <span className="text-2xl font-bold text-gray-900">CrossWMS</span>
+              <span className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">CrossWMS</span>
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-8">
-              <button onClick={() => scrollToSection('visao-geral')} className="text-gray-600 hover:text-blue-600 transition-colors">
+            <nav className="hidden lg:flex items-center space-x-1">
+              <button 
+                onClick={() => scrollToSection('visao-geral')} 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  activeSection === 'visao-geral' 
+                    ? 'bg-blue-100 text-blue-700 shadow-sm' 
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              >
                 Visão Geral
               </button>
-              <button onClick={() => scrollToSection('modulos')} className="text-gray-600 hover:text-blue-600 transition-colors">
+              <button 
+                onClick={() => scrollToSection('modulos')} 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  activeSection === 'modulos' 
+                    ? 'bg-blue-100 text-blue-700 shadow-sm' 
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              >
                 Módulos
               </button>
-              <button onClick={() => scrollToSection('precos')} className="text-gray-600 hover:text-blue-600 transition-colors">
+              <button 
+                onClick={() => scrollToSection('precos')} 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  activeSection === 'precos' 
+                    ? 'bg-blue-100 text-blue-700 shadow-sm' 
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              >
                 Preços
               </button>
-              <button onClick={() => scrollToSection('calculadora')} className="text-gray-600 hover:text-blue-600 transition-colors">
+              <button 
+                onClick={() => scrollToSection('calculadora')} 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  activeSection === 'calculadora' 
+                    ? 'bg-blue-100 text-blue-700 shadow-sm' 
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              >
                 Calculadora
               </button>
-              <button onClick={() => scrollToSection('funcionalidades')} className="text-gray-600 hover:text-blue-600 transition-colors">
+              <button 
+                onClick={() => scrollToSection('funcionalidades')} 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  activeSection === 'funcionalidades' 
+                    ? 'bg-blue-100 text-blue-700 shadow-sm' 
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              >
                 Funcionalidades
               </button>
-              <Button onClick={() => setLocation('/login')} variant="outline">
-                Entrar
-              </Button>
+              <div className="ml-4 pl-4 border-l border-gray-200">
+                <Button 
+                  onClick={() => setLocation('/login')} 
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  Entrar
+                </Button>
+              </div>
             </nav>
 
             {/* Mobile Menu Button */}
@@ -158,36 +199,83 @@ const LandingPrincipalAtualizada: React.FC = () => {
       {/* Main Content */}
       <main>
         <div className="container mx-auto px-6 py-12">
-          <Tabs defaultValue="visao-geral" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-8">
-              <TabsTrigger value="visao-geral" onClick={() => scrollToSection('visao-geral')}>Visão Geral</TabsTrigger>
-              <TabsTrigger value="modulos" onClick={() => scrollToSection('modulos')}>Módulos</TabsTrigger>
-              <TabsTrigger value="precos" onClick={() => scrollToSection('precos')}>Preços</TabsTrigger>
-              <TabsTrigger value="calculadora" onClick={() => scrollToSection('calculadora')}>Calculadora</TabsTrigger>
-              <TabsTrigger value="funcionalidades" onClick={() => scrollToSection('funcionalidades')}>Funcionalidades</TabsTrigger>
-            </TabsList>
+          {/* Navigation Buttons */}
+          <div className="flex flex-wrap justify-center gap-2 mb-16">
+            <button 
+              onClick={() => scrollToSection('visao-geral')}
+              className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                activeSection === 'visao-geral' 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
+                  : 'bg-white text-gray-600 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 shadow-sm hover:shadow-md'
+              }`}
+            >
+              Visão Geral
+            </button>
+            <button 
+              onClick={() => scrollToSection('modulos')}
+              className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                activeSection === 'modulos' 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
+                  : 'bg-white text-gray-600 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 shadow-sm hover:shadow-md'
+              }`}
+            >
+              Módulos
+            </button>
+            <button 
+              onClick={() => scrollToSection('precos')}
+              className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                activeSection === 'precos' 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
+                  : 'bg-white text-gray-600 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 shadow-sm hover:shadow-md'
+              }`}
+            >
+              Preços
+            </button>
+            <button 
+              onClick={() => scrollToSection('calculadora')}
+              className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                activeSection === 'calculadora' 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
+                  : 'bg-white text-gray-600 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 shadow-sm hover:shadow-md'
+              }`}
+            >
+              Calculadora
+            </button>
+            <button 
+              onClick={() => scrollToSection('funcionalidades')}
+              className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                activeSection === 'funcionalidades' 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' 
+                  : 'bg-white text-gray-600 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 shadow-sm hover:shadow-md'
+              }`}
+            >
+              Funcionalidades
+            </button>
+          </div>
 
-            {/* Hero/Visão Geral */}
-            <TabsContent value="visao-geral" id="visao-geral">
-              <section className="text-center py-20">
-                <h1 className="text-7xl font-black text-gray-900 mb-6 leading-tight">
-                  Pare de Perder Clientes<br />
-                  <span className="text-blue-600">por Falta de Tecnologia</span>
-                </h1>
-                <p className="text-2xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed">
-                  Enquanto seus concorrentes oferecem portais modernos e rastreamento em tempo real, 
-                  você ainda usa planilhas? <strong>Seus clientes estão migrando para quem oferece mais transparência.</strong>
-                </p>
+          {/* Hero/Visão Geral */}
+          <section id="visao-geral" className="text-center py-24">
+                <div className="max-w-5xl mx-auto">
+                  <h1 className="text-6xl md:text-7xl font-black text-gray-900 mb-8 leading-tight">
+                    Pare de Perder Clientes<br />
+                    <span className="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent">
+                      por Falta de Tecnologia
+                    </span>
+                  </h1>
+                  <p className="text-xl md:text-2xl text-gray-600 mb-16 max-w-4xl mx-auto leading-relaxed">
+                    Enquanto seus concorrentes oferecem portais modernos e rastreamento em tempo real, 
+                    você ainda usa planilhas? <strong className="text-gray-800">Seus clientes estão migrando para quem oferece mais transparência.</strong>
+                  </p>
                 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
                   <Input
                     type="email"
                     placeholder="Seu melhor email comercial"
-                    className="max-w-md h-16 text-lg border-2 focus:border-blue-500"
+                    className="max-w-md h-14 text-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 rounded-xl shadow-sm"
                   />
                   <Button 
                     size="lg" 
-                    className="h-16 px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                    className="h-14 px-8 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 rounded-xl"
                   >
                     Solicitar Demonstração Gratuita
                     <ArrowRight className="ml-2 w-5 h-5" />
@@ -195,213 +283,211 @@ const LandingPrincipalAtualizada: React.FC = () => {
                 </div>
 
                 {/* Benefícios */}
-                <div className="grid md:grid-cols-3 gap-8 mt-20">
-                  <Card className="p-8 text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Shield className="w-8 h-8 text-blue-600" />
+                <div className="grid md:grid-cols-3 gap-8 mt-24">
+                  <div className="group p-8 text-center bg-white/60 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <Shield className="w-8 h-8 text-white" />
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-4">100% Seguro e Confiável</h3>
-                    <p className="text-gray-600 text-lg">Infraestrutura enterprise com backup automático e disponibilidade 99.9%</p>
-                  </Card>
+                    <p className="text-gray-600 text-lg leading-relaxed">Infraestrutura enterprise com backup automático e disponibilidade 99.9%</p>
+                  </div>
                   
-                  <Card className="p-8 text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <CheckCircle className="w-8 h-8 text-green-600" />
+                  <div className="group p-8 text-center bg-white/60 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+                    <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <CheckCircle className="w-8 h-8 text-white" />
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-4">Implementação em 24h</h3>
-                    <p className="text-gray-600 text-lg">Sistema 100% nuvem. Sem instalação, sem complicação, sem demora</p>
-                  </Card>
+                    <p className="text-gray-600 text-lg leading-relaxed">Sistema 100% nuvem. Sem instalação, sem complicação, sem demora</p>
+                  </div>
                   
-                  <Card className="p-8 text-center border-0 shadow-lg hover:shadow-xl transition-shadow">
-                    <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Users className="w-8 h-8 text-orange-600" />
+                  <div className="group p-8 text-center bg-white/60 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
+                    <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <Users className="w-8 h-8 text-white" />
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-4">Suporte Especializado</h3>
-                    <p className="text-gray-600 text-lg">30 dias de implementação com especialista dedicado + suporte contínuo</p>
-                  </Card>
+                    <p className="text-gray-600 text-lg leading-relaxed">30 dias de implementação com especialista dedicado + suporte contínuo</p>
+                  </div>
                 </div>
-              </section>
-            </TabsContent>
+                </div>
+          </section>
 
-            {/* Módulos */}
-            <TabsContent value="modulos" id="modulos">
-              <section className="py-24">
-                <div className="text-center mb-12">
-                  <h2 className="text-5xl font-black text-gray-900 mb-6">Módulos do Sistema</h2>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          {/* Módulos */}
+          <section id="modulos" className="py-24">
+                <div className="text-center mb-16">
+                  <h2 className="text-5xl md:text-6xl font-black text-gray-900 mb-6">
+                    Módulos do Sistema
+                  </h2>
+                  <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
                     Escolha os módulos que sua operação precisa. Comece com o básico e expanda conforme cresce.
                   </p>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-8">
                   {/* Plataforma WMS */}
-                  <Card className="p-8 border-2 border-blue-200 bg-blue-50">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-2xl text-gray-900">Plataforma WMS</CardTitle>
-                          <Badge className="mt-2 bg-blue-600">Obrigatório</Badge>
-                        </div>
-                        <div className="text-3xl font-bold text-blue-600">R$ 499</div>
+                  <div className="group p-8 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-2xl border-2 border-blue-200 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">Plataforma WMS</h3>
+                        <Badge className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">Obrigatório</Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700 mb-4">{modulesConfig.plataformaWMS.description}</p>
-                      <div className="space-y-2">
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Dashboard operacional completo
-                        </div>
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Gestão de volumes e endereçamento
-                        </div>
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Checklist e conferência
-                        </div>
+                      <div className="text-3xl font-bold text-blue-600">R$ 499</div>
+                    </div>
+                    <p className="text-gray-700 mb-6 leading-relaxed">{modulesConfig.plataformaWMS.description}</p>
+                    <div className="space-y-3">
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Dashboard operacional completo</span>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Gestão de volumes e endereçamento</span>
+                      </div>
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Checklist e conferência</span>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Módulo de Coletas */}
-                  <Card className="p-8 border-2 border-gray-200">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-2xl text-gray-900">Módulo de Coletas</CardTitle>
-                          <Badge variant="outline" className="mt-2">Opcional</Badge>
-                        </div>
-                        <div className="text-3xl font-bold text-gray-600">R$ 199</div>
+                  <div className="group p-8 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">Módulo de Coletas</h3>
+                        <Badge variant="outline" className="border-gray-300 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">Opcional</Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700 mb-4">{modulesConfig.moduloColetas.description}</p>
-                      <div className="space-y-2">
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Solicitações automatizadas
-                        </div>
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Rastreamento GPS em tempo real
-                        </div>
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Gestão de veículos e motoristas
-                        </div>
+                      <div className="text-3xl font-bold text-gray-600">R$ 199</div>
+                    </div>
+                    <p className="text-gray-700 mb-6 leading-relaxed">{modulesConfig.moduloColetas.description}</p>
+                    <div className="space-y-3">
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Solicitações automatizadas</span>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Rastreamento GPS em tempo real</span>
+                      </div>
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Gestão de veículos e motoristas</span>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Portal do Cliente */}
-                  <Card className="p-8 border-2 border-gray-200">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-2xl text-gray-900">Portal do Cliente</CardTitle>
-                          <Badge variant="outline" className="mt-2">Opcional</Badge>
-                        </div>
-                        <div className="text-3xl font-bold text-gray-600">R$ 199</div>
+                  <div className="group p-8 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">Portal do Cliente</h3>
+                        <Badge variant="outline" className="border-gray-300 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">Opcional</Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700 mb-4">{modulesConfig.portalCliente.description}</p>
-                      <div className="space-y-2">
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Dashboard personalizado
-                        </div>
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Solicitação de coletas online
-                        </div>
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Rastreamento de cargas
-                        </div>
+                      <div className="text-3xl font-bold text-gray-600">R$ 199</div>
+                    </div>
+                    <p className="text-gray-700 mb-6 leading-relaxed">{modulesConfig.portalCliente.description}</p>
+                    <div className="space-y-3">
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Dashboard personalizado</span>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Solicitação de coletas online</span>
+                      </div>
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Rastreamento de cargas</span>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Portal do Fornecedor */}
-                  <Card className="p-8 border-2 border-gray-200">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="text-2xl text-gray-900">Portal do Fornecedor</CardTitle>
-                          <Badge variant="outline" className="mt-2">Opcional</Badge>
-                        </div>
-                        <div className="text-3xl font-bold text-gray-600">R$ 199</div>
+                  <div className="group p-8 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">Portal do Fornecedor</h3>
+                        <Badge variant="outline" className="border-gray-300 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">Opcional</Badge>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-gray-700 mb-4">{modulesConfig.portalFornecedor.description}</p>
-                      <div className="space-y-2">
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Gestão de solicitações
-                        </div>
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Documentação fiscal
-                        </div>
-                        <div className="flex items-center text-gray-700">
-                          <CheckCircle className="w-4 h-4 text-green-600 mr-2" />
-                          Comunicação integrada
-                        </div>
+                      <div className="text-3xl font-bold text-gray-600">R$ 199</div>
+                    </div>
+                    <p className="text-gray-700 mb-6 leading-relaxed">{modulesConfig.portalFornecedor.description}</p>
+                    <div className="space-y-3">
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Gestão de solicitações</span>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Documentação fiscal</span>
+                      </div>
+                      <div className="flex items-center text-gray-700">
+                        <CheckCircle className="w-5 h-5 text-green-600 mr-3 flex-shrink-0" />
+                        <span>Comunicação integrada</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </section>
-            </TabsContent>
+          </section>
 
-            {/* Preços */}
-            <TabsContent value="precos" id="precos">
-              <section className="py-24">
-                <div className="text-center mb-12">
-                  <h2 className="text-5xl font-black text-gray-900 mb-6">Planos de Processamento</h2>
-                  <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          {/* Preços */}
+          <section id="precos" className="py-24">
+                <div className="text-center mb-16">
+                  <h2 className="text-5xl md:text-6xl font-black text-gray-900 mb-6">
+                    Planos de Processamento
+                  </h2>
+                  <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
                     Escolha o plano ideal baseado no volume de documentos que sua operação processa mensalmente.
                   </p>
                 </div>
 
                 <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-6">
                   {processingPlans.map((plan, index) => (
-                    <Card key={index} className={`p-6 text-center ${index === 2 ? 'border-2 border-blue-500 shadow-lg' : 'border border-gray-200'}`}>
-                      <CardHeader>
-                        <CardTitle className="text-xl text-gray-900">{plan.name}</CardTitle>
-                        {index === 2 && <Badge className="mx-auto bg-blue-600">Mais Popular</Badge>}
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-3xl font-bold text-gray-900 mb-2">R$ {plan.price}</div>
-                        <p className="text-gray-600 text-sm mb-4">Até {plan.documents.toLocaleString()} docs/mês</p>
-                        <p className="text-gray-500 text-xs">{plan.description}</p>
-                      </CardContent>
-                    </Card>
+                    <div 
+                      key={index} 
+                      className={`group p-6 text-center rounded-2xl transition-all duration-300 hover:-translate-y-2 ${
+                        index === 2 
+                          ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-500 shadow-xl hover:shadow-2xl' 
+                          : 'bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg hover:shadow-xl'
+                      }`}
+                    >
+                      <div className="mb-4">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                        {index === 2 && (
+                          <Badge className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                            Mais Popular
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-3xl font-bold text-gray-900 mb-2">R$ {plan.price}</div>
+                      <p className="text-gray-600 text-sm mb-4">Até {plan.documents.toLocaleString()} docs/mês</p>
+                      <p className="text-gray-500 text-xs leading-relaxed">{plan.description}</p>
+                    </div>
                   ))}
                 </div>
 
-                <div className="mt-12 p-8 bg-gray-50 rounded-lg">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6 text-center">Como Funciona o CrossWMS</h3>
+                <div className="mt-16 p-8 bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-2xl border border-gray-200 shadow-lg">
+                  <h3 className="text-3xl font-bold text-gray-900 mb-8 text-center">Como Funciona o CrossWMS</h3>
                   <div className="grid md:grid-cols-2 gap-8">
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 mb-3">💳 Assinatura do Software</h4>
-                      <p className="text-gray-700">Pague apenas pelos módulos que usar. Plataforma WMS é obrigatória (R$ 499/mês), demais módulos são opcionais (R$ 199/mês cada).</p>
+                    <div className="p-6 bg-white/60 backdrop-blur-sm rounded-xl border border-gray-100">
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                        <span className="text-2xl mr-3">💳</span>
+                        Assinatura do Software
+                      </h4>
+                      <p className="text-gray-700 leading-relaxed">Pague apenas pelos módulos que usar. Plataforma WMS é obrigatória (R$ 499/mês), demais módulos são opcionais (R$ 199/mês cada).</p>
                     </div>
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 mb-3">📊 Plano de Processamento</h4>
-                      <p className="text-gray-700">Baseado no volume de documentos processados mensalmente. Comece pequeno e escale conforme cresce.</p>
+                    <div className="p-6 bg-white/60 backdrop-blur-sm rounded-xl border border-gray-100">
+                      <h4 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                        <span className="text-2xl mr-3">📊</span>
+                        Plano de Processamento
+                      </h4>
+                      <p className="text-gray-700 leading-relaxed">Baseado no volume de documentos processados mensalmente. Comece pequeno e escale conforme cresce.</p>
                     </div>
                   </div>
                 </div>
-              </section>
-            </TabsContent>
+          </section>
 
-            {/* Calculadora */}
-            <TabsContent value="calculadora" id="calculadora">
-              <section className="py-24">
+          {/* Calculadora */}
+          <section id="calculadora" className="py-24">
                 <div className="text-center mb-12">
                   <h2 className="text-5xl font-black text-gray-900 mb-6">Calculadora de Investimento</h2>
                   <p className="text-xl text-gray-600 max-w-2xl mx-auto">
@@ -595,12 +681,10 @@ const LandingPrincipalAtualizada: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </section>
-            </TabsContent>
+          </section>
 
-            {/* Funcionalidades */}
-            <TabsContent value="funcionalidades" id="funcionalidades">
-              <section className="py-24">
+          {/* Funcionalidades */}
+          <section id="funcionalidades" className="py-24">
                 <div className="text-center mb-12">
                   <h2 className="text-5xl font-black text-gray-900 mb-6">Funcionalidades Avançadas</h2>
                   <p className="text-xl text-gray-600 max-w-2xl mx-auto">
@@ -692,9 +776,7 @@ const LandingPrincipalAtualizada: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </section>
-            </TabsContent>
-          </Tabs>
+          </section>
         </div>
       </main>
 

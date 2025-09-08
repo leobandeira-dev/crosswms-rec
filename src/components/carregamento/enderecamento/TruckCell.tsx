@@ -4,13 +4,19 @@ import { Button } from '@/components/ui/button';
 
 interface Volume {
   id: string;
-  descricao: string;
+  codigo: string;
+  notaFiscal: string;
+  produto: string;
   peso: string;
+  dimensoes: string;
   fragil: boolean;
+  posicaoAtual?: string;
+  descricao: string;
   posicionado: boolean;
   etiquetaMae: string;
-  notaFiscal: string;
   fornecedor: string;
+  quantidade: number;
+  etiquetado: boolean;
 }
 
 interface TruckCellProps {
