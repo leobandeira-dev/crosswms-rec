@@ -16,7 +16,7 @@ export const users = pgTable("users", {
   nome: varchar("nome").notNull(),
   empresa_id: varchar("empresa_id"),
   perfil_id: varchar("perfil_id"),
-  ativo: boolean("ativo").default(true),
+  status: varchar("status").default("ativo"),
   created_at: timestamp("created_at").defaultNow(),
   updated_at: timestamp("updated_at").defaultNow(),
 });
