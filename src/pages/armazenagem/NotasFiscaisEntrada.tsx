@@ -2454,7 +2454,7 @@ const NotasFiscaisEntrada = () => {
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Invoice Entry Form - Coluna maior (2/3 do espaço) */}
             <div className="flex-2">
-              <div className="crosswms-card p-8">
+              <div className="crosswms-card p-8 bg-gray-50 shadow-lg rounded-lg border border-gray-200">
                 <div className="bg-[#0098DA]/5 px-8 py-6 -mx-8 -mt-8 mb-8 border-b border-[#0098DA]/10">
                   <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <FileText className="h-5 w-5 text-[#0098DA]" />
