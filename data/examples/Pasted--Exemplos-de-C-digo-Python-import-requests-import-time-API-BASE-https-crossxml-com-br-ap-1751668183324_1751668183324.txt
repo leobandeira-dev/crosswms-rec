@@ -1,0 +1,104 @@
+ Exemplos de Código
+ Python
+import requests
+import time
+
+API_BASE = "https://crossxml.com.br/api/v1"
+API_KEY = "sua_api_key_aqui"
+
+headers = {
+    "X-API-Key": API_KEY,
+    "Content-Type": "application/json"
+}
+
+# Iniciar download
+payload = {
+    "invoice_keys": ["35250513516247000107550010000113401146202508"]
+}
+
+response = requests.post(f"{API_BASE}/jobs", json=payload, headers=headers)
+result = response.json()
+
+job_id = result["job_id"]
+print(f"Download iniciado! Job ID: {job_id}")
+
+# Aguardar conclusão
+while True:
+    status_response = requests.get(f"{API_BASE}/jobs/{job_id}", headers=headers)
+    status = status_response.json()
+    
+    print(f"Status: {status['status']} - Progresso: {status.get('progress', {}).get('percentage', 0)}%")
+    
+    if status["status"] == "completed":
+        print("Download concluído!")
+        # Listar arquivos disponíveis
+        files_response = requests.get(f"{API_BASE}/jobs/{job_id}/files", headers=headers)
+        files_data = files_response.json()
+        for file_info in files_data["files"]:
+            print(f"Arquivo: {file_info['filename']}")
+        break
+    elif status["status"] == "failed":
+        print("Download falhou!")
+        break
+        
+    time.sleep(5)
+ JavaScript
+const API_BASE = "https://crossxml.com.br/api/v1";
+const API_KEY = "sua_api_key_aqui";
+
+const headers = {
+    "X-API-Key": API_KEY,
+    "Content-Type": "application/json"
+};
+
+async function downloadXML(invoiceKeys) {
+    try {
+        // Iniciar download
+        const response = await fetch(`${API_BASE}/jobs`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+                invoice_keys: invoiceKeys
+            })
+        });
+        
+        const result = await response.json();
+        
+        console.log(`Download iniciado! Job ID: ${result.job_id}`);
+        
+        // Monitorar progresso
+        const jobId = result.job_id;
+        return await monitorJob(jobId);
+    } catch (error) {
+        console.error('Erro no download:', error);
+    }
+}
+
+async function monitorJob(jobId) {
+    while (true) {
+        const response = await fetch(`${API_BASE}/jobs/${jobId}`, {
+            headers: headers
+        });
+        
+        const status = await response.json();
+        const progress = status.progress?.percentage || 0;
+        console.log(`Status: ${status.status} - Progresso: ${progress}%`);
+        
+        if (status.status === "completed") {
+            console.log("Download concluído!");
+            // Listar arquivos disponíveis
+            const filesResponse = await fetch(`${API_BASE}/jobs/${jobId}/files`, {
+                headers: headers
+            });
+            const filesData = await filesResponse.json();
+            return filesData.files;
+        } else if (status.status === "failed") {
+            throw new Error("Download falhou!");
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+}
+
+// Uso
+downloadXML(["35250513516247000107550010000113401146202508"]);

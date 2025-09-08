@@ -1,0 +1,36 @@
+# Comandos para upload do CrossWMS no GitHub
+
+# 1. Inicializar repositório (se necessário)
+git init
+
+# 2. Configurar usuário Git
+git config user.name "Leonardo Bandeira"
+git config user.email "admin@crosswms.com.br"
+
+# 3. Adicionar remote do GitHub (substitua pela URL do seu repositório)
+git remote add origin https://github.com/crosswms/crosswms-sistema.git
+
+# 4. Adicionar todos os arquivos
+git add .
+
+# 5. Fazer commit inicial
+git commit -m "feat: Sistema CrossWMS v2.1.0 - Plataforma logística completa
+
+- Sistema multi-tenant com arquitetura hierárquica
+- Módulos: Armazenagem, Coletas, Carregamento, Relatórios
+- Integração NSDocs API para processamento NFe
+- Interface moderna com React + TypeScript
+- Backend Node.js com PostgreSQL e Drizzle ORM
+- Sistema de permissões granulares (38+ permissões)
+- Autenticação JWT com 4 tipos de usuário
+- Domínio personalizado com Cloudflare
+- Controle de versões integrado com GitHub
+- Documentação completa e guias de deploy"
+
+# 6. Fazer push para GitHub
+git branch -M main
+git push -u origin main
+
+# 7. Verificar upload
+git status
+git log --oneline -5

@@ -1763,7 +1763,7 @@ export function registerRoutes(app: Express): Server {
       
       // Verificar credenciais
       const cnpj = process.env.LOGISTICA_CNPJ;
-      const token = process.env.LOGISTICA_TOKEN || process.env.LOGISTICA_API_TOKEN || process.env.API_LOGISTICA_TOKEN;
+      const token = process.env.LOGISTICA_INFORMACAO_TOKEN;
       
       if (!cnpj || !token) {
         console.log('[API] Credenciais da Logística da Informação não encontradas');

@@ -1,0 +1,12 @@
+feat: Sistema CrossWMS v2.1.0 - Plataforma logística completa
+
+- Sistema multi-tenant com arquitetura hierárquica
+- Módulos: Armazenagem, Coletas, Carregamento, Relatórios
+- Integração NSDocs API para processamento NFe
+- Interface moderna com React + TypeScript
+- Backend Node.js com PostgreSQL e Drizzle ORM
+- Sistema de permissões granulares (38+ permissões)
+- Autenticação JWT com 4 tipos de usuário
+- Domínio personalizado com Cloudflare
+- Controle de versões integrado com GitHub
+- Documentação completa e guias de deploy

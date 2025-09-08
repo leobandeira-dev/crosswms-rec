@@ -1,0 +1,115 @@
+Product Discovery: YMS - Sistema de Gerenciamento de Pátio
+1. O Problema e a Oportunidade
+
+Empresas que lidam com um alto volume de recebimento e expedição de mercadorias enfrentam desafios significativos na gestão de seus pátios. A falta de visibilidade e controle resulta em:
+
+Longas filas e tempos de espera: Caminhões parados por horas, gerando custos extras de estadia (demurrage) e insatisfação dos motoristas e transportadoras.
+
+Ineficiência operacional: Dificuldade em localizar veículos, direcionar para a doca correta e otimizar a sequência de carga e descarga.
+
+Comunicação falha: Falta de um canal centralizado de comunicação entre portaria, motoristas, operadores de doca e gestores do armazém.
+
+Riscos de segurança e conformidade: Dificuldade no controle de acesso de veículos e motoristas, e na aplicação de checklists de segurança.
+
+Falta de dados para tomada de decisão: Impossibilidade de medir tempos de ciclo (gate-in to gate-out), identificar gargalos e otimizar a alocação de recursos.
+
+A oportunidade reside em oferecer uma solução tecnológica que automatize e otimize essas operações, transformando o pátio, que muitas vezes é uma "caixa-preta" da logística, em um ambiente controlado, eficiente e data-driven.
+
+2. Análise de Concorrentes e Mercado (Baseado em Fretefy e conhecimento de mercado)
+
+A solução da Fretefy, assim como outras do mercado, foca em digitalizar a jornada do caminhão dentro do pátio. As funcionalidades apresentadas nas imagens são o padrão-ouro do setor e servem como um excelente baseline.
+
+Funcionalidades Essenciais Identificadas:
+
+Agendamento Prévio (Portal de Agendamentos): Permite que transportadoras ou fornecedores agendem online a chegada de veículos, garantindo previsibilidade e evitando picos de movimento não planejados.
+
+Check-in e Check-out (Portal do Motorista/Check-in): Automatiza a chegada do motorista, seja via totem, app ou portaria, validando informações do agendamento e reduzindo o tempo de entrada.
+
+Visibilidade e Controle Centralizado (Gestão de Pátio / Painel de Carregamento): Um dashboard central que mostra, em tempo real, a localização e o status de cada veículo no pátio (aguardando, chamando, em doca, liberado).
+
+Gestão de Tarefas e Doca (Painel de Carregamento): Permite direcionar o veículo para a doca correta, sequenciar as atividades de carga/descarga e acompanhar o progresso de cada operação.
+
+Comunicação Integrada: Notifica os motoristas (via SMS, WhatsApp ou app) sobre a hora de se dirigir à doca, eliminando a necessidade de comunicação por rádio ou contato pessoal.
+
+Compliance e Segurança (Checklist Digital): Aplica checklists digitais customizáveis para garantir que veículos e cargas atendam aos padrões de segurança e qualidade da empresa.
+
+Análise e Relatórios (KPIs & Relatórios): Coleta dados de todas as etapas para gerar indicadores de desempenho (KPIs) como Tempo Médio no Pátio (Turnaround Time), Tempo de Espera, Tempo em Doca, etc.
+
+3. Personas
+
+Para desenhar uma solução eficaz, precisamos entender os usuários e suas dores:
+
+Cláudia, a Gerente de Logística:
+
+Objetivo: Reduzir custos operacionais (estadias, horas extras) e aumentar a eficiência do fluxo de cargas.
+
+Dores: "Não sei por que meus caminhões demoram tanto para serem liberados. Não tenho visibilidade dos gargalos. Sou cobrada por custos de demurrage que não consigo justificar."
+
+Necessidade: Dashboards com KPIs claros, relatórios de produtividade e visibilidade em tempo real do pátio.
+
+Sérgio, o Porteiro/Controlador de Pátio:
+
+Objetivo: Liberar a entrada e saída de caminhões de forma rápida e segura.
+
+Dores: "Lido com filas enormes, motoristas estressados e preciso preencher planilhas manualmente. É fácil cometer erros e a comunicação com o armazém é por rádio e muitas vezes falha."
+
+Necessidade: Um sistema simples para check-in, que valide agendamentos automaticamente e indique para onde o motorista deve ir.
+
+Marcos, o Motorista de Caminhão:
+
+Objetivo: Carregar/descarregar o mais rápido possível para seguir para a próxima viagem.
+
+Dores: "Fico horas na fila sem saber quando serei chamado. Não tenho um lugar adequado para esperar e perco tempo e dinheiro."
+
+Necessidade: Um sistema de check-in fácil e uma forma de ser notificado (ex: SMS) quando for sua vez, permitindo que ele possa descansar ou se alimentar enquanto espera.
+
+Ana, a Líder de Armazém/Doca:
+
+Objetivo: Manter as docas operando com máxima produtividade.
+
+Dores: "Às vezes, uma doca fica ociosa enquanto há caminhões esperando. Não tenho previsibilidade de qual caminhão está chegando para preparar minha equipe e equipamentos."
+
+Necessidade: Um painel que mostre os próximos veículos a serem chamados e o status de cada doca em tempo real.
+
+Proposta de Solução: YMS "Fluxo Certo"
+Visão do Produto: Ser a plataforma mais intuitiva e completa para a gestão de pátios logísticos, transformando áreas de espera em centros de eficiência, segurança e previsibilidade.
+
+Pilares da Solução:
+
+Agendamento Inteligente: Mais do que um simples portal, nosso sistema terá regras de negócio para otimizar a distribuição de janelas de horário, considerando tipo de carga, veículo e capacidade das docas.
+
+Jornada 100% Digital para o Motorista: Desde o pré-cadastro até a saída, o motorista interage com o sistema via App ou WhatsApp, reduzindo a fricção na portaria.
+
+Torre de Controle Visual (Yard View): Um mapa gráfico e interativo do pátio, permitindo que os gestores vejam e gerenciem os veículos com uma interface "drag-and-drop".
+
+Analytics Preditivo: Utilizar os dados coletados para prever gargalos e sugerir ações proativas para o gestor de logística.
+
+Funcionalidades Essenciais (MVP - Mínimo Produto Viável):
+
+Funcionalidade	Descrição	Persona Principal
+Módulo 1: Portal de Agendamento Web	Parceiros (transportadoras/fornecedores) podem solicitar e confirmar horários de chegada/partida online. O sistema valida conflitos de horário.	Cláudia, Transportadora
+Módulo 2: Check-in & Fila Virtual	Motorista faz check-in via QR Code/Totem/App na chegada. O sistema confirma o agendamento e o coloca em uma fila de espera virtual.	Marcos, Sérgio
+Módulo 3: Painel de Controle do Pátio	Um dashboard central para a equipe de pátio e armazém. Exibe todos os veículos, seus status (Aguardando, Chamado, Em Doca, Concluído) e tempo em cada etapa.	Cláudia, Sérgio, Ana
+Módulo 4: Gestão de Chamadas	A partir do Painel de Controle, o operador chama o próximo motorista da fila para a doca designada.	Ana, Sérgio
+Módulo 5: Notificação ao Motorista	Disparo automático de notificações (SMS/WhatsApp) para o motorista com a instrução para se dirigir à doca X.	Marcos
+Módulo 6: Check-out Simplificado	Registro da saída do veículo, finalizando o ciclo e consolidando o tempo total de permanência.	Sérgio
+Módulo 7: Dashboard de KPIs	Relatórios básicos essenciais: Tempo Médio de Permanência (Turnaround Time), Tempo Médio de Espera, N° de Veículos/Dia.	Cláudia
+
+Exportar para as Planilhas
+Funcionalidades Futuras (Roadmap Pós-MVP):
+
+Checklist Digital: Criação de formulários de inspeção customizáveis para serem respondidos no check-in.
+
+Gestão de Pátio Visual (Yard Map): Mapa gráfico do pátio para arrastar e soltar ícones de veículos, facilitando a localização.
+
+Integração com WMS/TMS: Conexão com sistemas de gestão de armazém (WMS) e transporte (TMS) para um fluxo de informação automatizado (ex: validar nota fiscal no check-in).
+
+Alocação Automática de Docas: O sistema sugere a melhor doca com base no tipo de carga, veículo e disponibilidade.
+
+Módulo de Analytics Avançado: Análise preditiva de gargalos e relatórios customizáveis.
+
+App do Motorista: Um aplicativo dedicado com funcionalidades adicionais, como visualização de documentos e comunicação via chat.
+
+Diferencial Competitivo:
+
+Nossa solução se destacará pela simplicidade de uso e implementação (Time-to-Value). Enquanto concorrentes podem oferecer sistemas complexos, nosso foco será em uma interface limpa, uma jornada de usuário intuitiva (especialmente para o motorista) e um processo de onboarding rápido para as empresas, garantindo que elas vejam valor em semanas, não em meses.
