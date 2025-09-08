@@ -1259,86 +1259,6 @@ const NotasFiscaisEntrada = () => {
     }
   };
 
-  // CrossXML API integration function
-  const fetchXmlWithCrossXML = async () => {
-    if (!formData.chave_nota_fiscal || formData.chave_nota_fiscal.length !== 44) {
-      alert('Por favor, insira uma chave de nota fiscal válida (44 dígitos)');
-      return;
-    }
-
-    setIsApiLoading(true);
-    
-    try {
-      console.log(`[Frontend] Iniciando busca CrossXML para: ${formData.chave_nota_fiscal}`);
-      
-      // Get authentication token from localStorage
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Token de autenticação não encontrado');
-      }
-
-      const response = await fetch('/api/xml/fetch-from-crossxml', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          chaveNotaFiscal: formData.chave_nota_fiscal
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      console.log('[Frontend] Resposta da API CrossXML:', {
-        success: result.success,
-        hasData: !!result.data,
-        hasXml: !!result.xml_content
-      });
-
-      if (result.success && result.data) {
-        // Populate form with extracted data
-        setFormData(prevData => ({
-          ...prevData,
-          ...result.data
-        }));
-
-        toast({
-          title: "✅ NFe encontrada via CrossXML!",
-          description: `Dados da NFe ${result.data.numero_nota} carregados com sucesso.`
-        });
-
-        // Store data in sessionStorage for other components
-        sessionStorage.setItem('nfeData', JSON.stringify(result.data));
-        
-      } else if (result.requires_api_key) {
-        toast({
-          title: "⚠️ Configuração necessária",
-          description: "Configure as credenciais da CrossXML nas configurações do sistema."
-        });
-      } else if (result.nfe_not_found) {
-        toast({
-          title: "ℹ️ NFe não encontrada",
-          description: "A NFe não foi encontrada na base da CrossXML. Tente com outra API ou upload manual."
-        });
-      } else {
-        throw new Error(result.error || 'Erro desconhecido na API CrossXML');
-      }
-    } catch (error: any) {
-      console.error('[Frontend] Erro na busca CrossXML:', error);
-      
-      toast({
-        title: "❌ Erro na API CrossXML",
-        description: error.message || 'Erro ao conectar com a API CrossXML'
-      });
-    } finally {
-      setIsApiLoading(false);
-    }
-  };
 
   // Automated RPA function using backend Selenium automation
   const fetchXmlWithNSDocs = async () => {
@@ -2853,33 +2773,6 @@ const NotasFiscaisEntrada = () => {
                         <>
                           <Upload className="h-3 w-3 mr-1" />
                           Buscar NFe
-                        </>
-                      )}
-                    </Button>
-                    
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (formData.chave_nota_fiscal.length === 44) {
-                          fetchXmlWithCrossXML();
-                        } else {
-                          alert('Por favor, insira uma chave válida de 44 dígitos');
-                        }
-                      }}
-                      disabled={isApiLoading || !formData.chave_nota_fiscal}
-                      className="px-3 py-1.5 bg-green-600 border-green-600 text-white hover:bg-green-700 disabled:opacity-50 text-xs"
-                    >
-                      {isApiLoading ? (
-                        <>
-                          <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                          Buscando...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-3 w-3 mr-1" />
-                          BuscarNfe2
                         </>
                       )}
                     </Button>
