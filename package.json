@@ -37,6 +37,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.3",
     "@types/nodemailer": "^7.0.1",
+    "@types/react-dom": "^19.1.9",
     "@xmldom/xmldom": "^0.8.11",
     "@zxing/browser": "^0.1.5",
     "bcrypt": "^6.0.0",
