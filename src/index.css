@@ -176,13 +176,67 @@ a[role="menuitem"]:hover {
   border: 1px solid #e5e7eb !important;
   border-radius: 8px !important;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.1) !important;
-  z-index: 10000 !important;
+  z-index: 10001 !important;
   padding: 6px !important;
   min-width: 200px !important;
   max-height: 70vh !important;
   overflow-y: auto !important;
   position: fixed !important;
-  margin-left: 8px !important;
+  transform: translateX(4px) !important;
+}
+
+/* Força exibição de todos os elementos de submenu */
+[data-radix-dropdown-menu-sub-trigger][data-state="open"] + [data-radix-dropdown-menu-sub-content] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Garantir que submenus não sejam cortados */
+[data-radix-dropdown-menu-sub-content],
+[data-radix-dropdown-menu-content] {
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin) !important;
+  animation: none !important;
+}
+
+/* Hover states para triggers de submenu */
+[data-radix-dropdown-menu-sub-trigger]:hover {
+  background-color: #f1f5f9 !important;
+}
+
+[data-radix-dropdown-menu-sub-trigger][data-state="open"] {
+  background-color: #e2e8f0 !important;
+}
+
+/* CSS específico para submenus Radix - força a exibição */
+[data-radix-dropdown-menu-sub-content][data-state="open"] {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+[data-radix-dropdown-menu-sub-content][data-state="closed"] {
+  display: none !important;
+}
+
+/* Posicionamento lateral dos submenus */
+[data-side="right"][data-radix-dropdown-menu-sub-content] {
+  transform: translateX(8px) !important;
+}
+
+[data-side="left"][data-radix-dropdown-menu-sub-content] {
+  transform: translateX(-8px) !important;
+}
+
+/* Garantir que todos os submenus tenham fundo opaco */
+[data-radix-dropdown-menu-sub-content] > * {
+  background-color: transparent !important;
+}
+
+/* Debugging - remover depois se funcionar */
+[data-radix-dropdown-menu-sub-content] {
+  outline: 1px solid red !important;
 }
 
 /* Separadores */
