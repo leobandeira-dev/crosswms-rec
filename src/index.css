@@ -25,38 +25,44 @@ html, body, #root {
 
 .hover\:bg-cross-blueDark:hover { background-color: var(--cross-blue-dark); }
 
-/* Campos do formulário com bordas suaves */
-input[type="text"],
-input[type="email"],
-input[type="tel"],
-input[type="number"],
-input[type="password"],
-input[type="url"],
-input[type="date"],
-input[type="datetime-local"],
-input[type="time"],
-select,
-textarea {
+/* Campos do formulário com bordas suaves - alta especificidade */
+.crosswms-card input[type="text"],
+.crosswms-card input[type="email"],
+.crosswms-card input[type="tel"],
+.crosswms-card input[type="number"],
+.crosswms-card input[type="password"],
+.crosswms-card input[type="url"],
+.crosswms-card input[type="date"],
+.crosswms-card input[type="datetime-local"],
+.crosswms-card input[type="time"],
+.crosswms-card select,
+.crosswms-card textarea,
+input[class*="border"],
+input[class*="rounded"],
+textarea[class*="border"],
+select[class*="border"] {
   border-radius: 8px !important;
-  border: 1px solid #e5e7eb !important;
+  border: 1px solid #d1d5db !important;
   transition: all 0.3s ease !important;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+  background-color: white !important;
 }
 
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="tel"]:focus,
-input[type="number"]:focus,
-input[type="password"]:focus,
-input[type="url"]:focus,
-input[type="date"]:focus,
-input[type="datetime-local"]:focus,
-input[type="time"]:focus,
-select:focus,
-textarea:focus {
+.crosswms-card input[type="text"]:focus,
+.crosswms-card input[type="email"]:focus,
+.crosswms-card input[type="tel"]:focus,
+.crosswms-card input[type="number"]:focus,
+.crosswms-card input[type="password"]:focus,
+.crosswms-card input[type="url"]:focus,
+.crosswms-card input[type="date"]:focus,
+.crosswms-card input[type="datetime-local"]:focus,
+.crosswms-card input[type="time"]:focus,
+.crosswms-card select:focus,
+.crosswms-card textarea:focus,
+input[class*="border"]:focus,
+textarea[class*="border"]:focus,
+select[class*="border"]:focus {
   border-color: #3b82f6 !important;
-  ring: 2px !important;
-  ring-color: rgba(59, 130, 246, 0.2) !important;
   outline: none !important;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
