@@ -12,6 +12,7 @@ interface Volume {
   peso: string;
   status: string;
   posicao?: string;
+  fornecedor?: string;
 }
 
 interface CaminhaoLayout {
@@ -752,6 +753,14 @@ export const useEnderecamentoReal = () => {
     return volumesPosicionados === volumes.length;
   })();
 
+  // Função que atende à assinatura esperada pelo onAllocateVolumes
+  const alocarVolumes = useCallback((volumeIds: string[], cellId: string) => {
+    // Definir os volumes selecionados com base nos IDs fornecidos
+    setSelecionados(volumeIds);
+    // Chamar a função de mover volumes existente
+    moverVolumesSelecionados(cellId);
+  }, [moverVolumesSelecionados]);
+
   return {
     ordemSelecionada,
     volumes,
@@ -767,6 +776,7 @@ export const useEnderecamentoReal = () => {
     toggleSelecao,
     selecionarTodos,
     moverVolumesSelecionados,
+    alocarVolumes,
     removerVolume,
     saveLayout,
     allVolumesPositioned,

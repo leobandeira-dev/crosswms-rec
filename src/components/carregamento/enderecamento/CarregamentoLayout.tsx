@@ -20,6 +20,7 @@ interface CarregamentoLayoutProps {
   onSelectAll: () => void;
   onCellClick: (cellId: string) => void;
   onRemoveVolume: (volumeId: string, cellId: string) => void;
+  onAllocateVolumes: (volumeIds: string[], cellId: string) => void;
   onSaveLayout: () => void;
   onUpdateLinhas: (numeroLinhas: number) => void;
   hasSelectedVolumes: boolean;
@@ -39,6 +40,7 @@ const CarregamentoLayout: React.FC<CarregamentoLayoutProps> = ({
   onSelectAll,
   onCellClick,
   onRemoveVolume,
+  onAllocateVolumes,
   onSaveLayout,
   onUpdateLinhas,
   hasSelectedVolumes,
@@ -82,18 +84,8 @@ const CarregamentoLayout: React.FC<CarregamentoLayoutProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div>
-              <VolumeFilterSection onFilter={onFilter} />
-              <VolumeList 
-                volumes={volumesFiltrados}
-                selecionados={selecionados}
-                onSelectionToggle={onSelectionToggle}
-                onSelectAll={onSelectAll}
-              />
-            </div>
-            
-            <div className="lg:col-span-2">
+          <div className="w-full">
+            <div className="w-full">
               <TruckLayoutGrid 
                 orderNumber={orderNumber || 'ORD-2025-001'}
                 layout={caminhaoLayout}
@@ -101,11 +93,13 @@ const CarregamentoLayout: React.FC<CarregamentoLayoutProps> = ({
                 positionedVolumes={volumes.filter(v => v.posicao).length}
                 onCellClick={onCellClick}
                 onRemoveVolume={onRemoveVolume}
+                onAllocateVolumes={onAllocateVolumes}
                 hasSelectedVolumes={hasSelectedVolumes}
                 onSaveLayout={onSaveLayout}
                 allVolumesPositioned={allVolumesPositioned}
                 onPrintLayout={handlePrintLayout}
                 numeroLinhas={numeroLinhas}
+                availableVolumes={volumes}
               />
               <InstructionsCard />
             </div>
@@ -118,7 +112,7 @@ const CarregamentoLayout: React.FC<CarregamentoLayoutProps> = ({
           open={printModalOpen}
           onOpenChange={setPrintModalOpen}
           orderNumber={orderNumber || 'ORD-2025-001'}
-          layoutRef={layoutRef}
+          layoutRef={layoutRef as React.RefObject<HTMLDivElement>}
         />
       )}
     </div>
