@@ -1,5 +1,20 @@
 import { toast as sonnerToast } from "sonner";
 
-export const toast = sonnerToast;
+// Função toast simples que garante compatibilidade
+export const toast = (options: any) => {
+  if (typeof options === 'string') {
+    return sonnerToast(options);
+  } else if (options && options.title) {
+    return sonnerToast(options.title, {
+      description: options.description,
+      duration: options.duration,
+    });
+  } else {
+    return sonnerToast(options);
+  }
+};
 
-export { toast as useToast };
+// Hook compatível
+export const useToast = () => {
+  return { toast };
+};
