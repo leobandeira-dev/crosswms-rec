@@ -1,11 +1,14 @@
 
 import React, { createContext, useContext } from 'react';
 import { Usuario } from "@/types/supabase.types";
-import { Session } from '@supabase/supabase-js';
+
+interface CustomSession {
+  access_token: string;
+}
 
 type AuthContextType = {
   user: Usuario | null;
-  session: Session | null;
+  session: CustomSession | null;
   loading: boolean;
   connectionError: boolean;
   signIn: (email: string, password: string) => Promise<void>;

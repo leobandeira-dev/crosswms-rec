@@ -5,8 +5,12 @@ import { useAuthState } from '../hooks/useAuthState';
 import { useAuthActions } from '../hooks/useAuthActions';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, session, loading, setLoading, setUser, connectionError } = useAuthState();
-  const { signIn, signUp, signOut, forgotPassword, updatePassword } = useAuthActions(setLoading, setUser);
+  const authState = useAuthState();
+  const { user, session, loading, setUser, connectionError } = authState;
+  const { signIn, signUp, signOut, forgotPassword, updatePassword } = useAuthActions(
+    (loadingState: boolean) => {}, // Mock setLoading function
+    setUser
+  );
 
   return (
     <AuthContext.Provider

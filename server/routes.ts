@@ -58,27 +58,16 @@ interface AuthenticatedRequest extends express.Request {
   user?: any;
 }
 
-// Middleware de autenticação
+// Middleware de autenticação (desabilitado)
 const authenticateToken = async (req: AuthenticatedRequest, res: express.Response, next: express.NextFunction) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: 'Token de acesso requerido' });
-  }
-
-  try {
-    const sessionData = await storage.getSessionByToken(token);
-    if (!sessionData) {
-      return res.status(403).json({ error: 'Token inválido' });
-    }
-
-    req.user = sessionData.user;
-    next();
-  } catch (error) {
-    console.error('Authentication error:', error);
-    return res.status(403).json({ error: 'Token inválido' });
-  }
+  // Autenticação desabilitada - permitir acesso direto
+  req.user = {
+    id: '1',
+    nome: 'Usuário Demo',
+    email: 'demo@crosswms.com.br',
+    tipo_usuario: 'super_admin'
+  };
+  next();
 };
 
 export function registerRoutes(app: Express): Server {

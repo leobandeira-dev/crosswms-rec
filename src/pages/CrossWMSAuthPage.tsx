@@ -32,46 +32,27 @@ export default function CrossWMSAuthPage() {
     setIsLoading(true);
     setErroLogin('');
 
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password: senha,
-          tipo_usuario: selectedUserType
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('token', data.session.access_token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Redirecionamento baseado no tipo de usuário
-        const redirectUrl = data.user.tipo_usuario === 'super_admin' 
-          ? '/admin/dashboard' 
-          : data.user.tipo_usuario === 'transportador'
-          ? '/dashboard'
-          : data.user.tipo_usuario === 'cliente'
-          ? '/cliente/dashboard'
-          : data.user.tipo_usuario === 'fornecedor'
-          ? '/fornecedor/dashboard'
-          : '/dashboard';
-          
-        window.location.href = redirectUrl;
-        return;
-      } else {
-        setErroLogin(data.error || 'Erro ao fazer login');
-      }
-    } catch (error: any) {
-      setErroLogin('Erro de conexão. Tente novamente.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Acesso direto sem autenticação
+    const mockUser = {
+      id: '1',
+      nome: 'Usuário Demo',
+      email: email,
+      tipo_usuario: selectedUserType
+    };
+    
+    localStorage.setItem('token', 'demo-token');
+    localStorage.setItem('user', JSON.stringify(mockUser));
+    
+    // Redirecionamento baseado no tipo de usuário
+    const redirectUrl = selectedUserType === 'transportador'
+      ? '/dashboard'
+      : selectedUserType === 'cliente'
+      ? '/cliente/dashboard'
+      : selectedUserType === 'fornecedor'
+      ? '/fornecedor/dashboard'
+      : '/dashboard';
+      
+    window.location.href = redirectUrl;
   };
 
   return (

@@ -19,6 +19,7 @@ import LandingPrincipalLimpa from '@/pages/LandingPrincipalLimpa';
 import Home from '@/pages/Home';
 import TestPage from '@/pages/TestPage';
 import LoginPage from '@/pages/LoginPage';
+import CrossWMSAuthPage from '@/pages/CrossWMSAuthPage';
 import DashboardOtimizado from '@/pages/DashboardOtimizado';
 import UserProfilePage from '@/pages/UserProfilePage';
 import ResetPassword from '@/pages/ResetPassword';
@@ -154,7 +155,7 @@ export const SimpleRouter = () => {
   switch (path) {
     // Rotas públicas (não requerem autenticação)
     case '/':
-      return <TestPage />;
+      return <CrossWMSAuthPage />;
     case '/home':
       return <Home />;
     case '/sistema':
@@ -164,7 +165,9 @@ export const SimpleRouter = () => {
     case '/landing-antiga':
       return <PublicRoute><LandingPage /></PublicRoute>;
     case '/login':
-      return <PublicRoute><LoginPage /></PublicRoute>;
+      return <CrossWMSAuthPage />;
+    case '/auth':
+      return <CrossWMSAuthPage />;
     case '/reset-password':
       return <PublicRoute><ResetPasswordPage /></PublicRoute>;
     
@@ -329,8 +332,6 @@ export const SimpleRouter = () => {
       return <TransportadorRoute><OrdemCarregamento /></TransportadorRoute>;
     case '/armazenagem/carregamento/separacao':
       return <SeparacaoCarregamento />;
-    case '/armazenagem/conferencia':
-      return <ArmazenagemConferencia />;
     case '/armazenagem/carregamento/conferencia':
       return <ConferenciaCarregamento />;
     case '/armazenagem/carregamento/enderecamento':
