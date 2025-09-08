@@ -12,7 +12,7 @@ import {
 
 // Main Pages
 import Index from '@/pages/Index';
-import AuthPage from '@/pages/AuthPage';
+// AuthPage removed - using specific auth pages instead
 import ModernAuthPage from '@/pages/ModernAuthPage';
 import LandingPage from '@/pages/LandingPage';
 import LandingPageClient from '@/pages/LandingPageClient';
