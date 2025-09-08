@@ -50,46 +50,24 @@ export const useAuthState = () => {
   const [connectionError, setConnectionError] = useState<boolean>(false);
 
   useEffect(() => {
-    console.log('Inicializando estado de autenticação');
+    // Simplificar auth state para evitar erros - sistema sem autenticação
+    setLoading(false);
+    setConnectionError(false);
     
-    const initializeAuth = async () => {
-      try {
-        console.log('initializeAuth: Iniciando...');
-        const token = authService.getToken();
-        console.log('initializeAuth: Token encontrado:', !!token);
-        
-        if (token) {
-          console.log('initializeAuth: Buscando usuário atual...');
-          const currentUser = await authService.getCurrentUser();
-          console.log('initializeAuth: Resposta getCurrentUser:', currentUser);
-          
-          if (currentUser) {
-            console.log('initializeAuth: Definindo usuário:', currentUser.user);
-            console.log('initializeAuth: Dados da empresa:', currentUser.user.empresa);
-            setUser(currentUser.user);
-            setSession({ access_token: token });
-          } else {
-            console.log('initializeAuth: Nenhum usuário retornado');
-            setUser(null);
-            setSession(null);
-          }
-        } else {
-          console.log('initializeAuth: Nenhum token encontrado');
-          setUser(null);
-          setSession(null);
+    // Verificar se há token mock
+    const token = localStorage.getItem('token');
+    if (token === 'demo-token') {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const userData = JSON.parse(userStr);
+          setUser(userData);
+          setSession({ access_token: token });
+        } catch (error) {
+          console.log('Erro ao parsear usuário do localStorage');
         }
-        setConnectionError(false);
-      } catch (error) {
-        console.error('Erro ao inicializar autenticação:', error);
-        setConnectionError(true);
-        setUser(null);
-        setSession(null);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    initializeAuth();
+    }
   }, []);
 
   return {

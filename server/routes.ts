@@ -155,8 +155,19 @@ export function registerRoutes(app: Express): Server {
   // Endpoint para verificar autenticação
   app.get("/api/me", authenticateToken, async (req: AuthenticatedRequest, res) => {
     try {
-      const userWithCompany = await storage.getUserWithCompanyById(req.user!.id);
-      res.json(userWithCompany);
+      // Retornar usuário mock já que a autenticação está desabilitada
+      const mockUser = {
+        id: '1',
+        nome: 'LEONARDO BANDEIRA',
+        email: 'admin@crosswms.com.br',
+        tipo_usuario: 'super_admin',
+        empresa: {
+          id: '1',
+          nome: 'CrossWMS Logística',
+          cnpj: '12.345.678/0001-90'
+        }
+      };
+      res.json(mockUser);
     } catch (error) {
       console.error('Get user error:', error);
       res.status(500).json({ error: "Erro interno do servidor" });
