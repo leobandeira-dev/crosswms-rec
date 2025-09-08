@@ -1746,5 +1746,53 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // XML API Routes - Logística da Informação
+  app.post("/api/xml/fetch-from-logistica", async (req, res) => {
+    try {
+      const { chaveNotaFiscal } = req.body;
+      
+      if (!chaveNotaFiscal || chaveNotaFiscal.length !== 44) {
+        return res.status(400).json({
+          success: false,
+          error: 'Chave NFe inválida. Deve ter exatamente 44 dígitos.',
+          invalid_xml: true
+        });
+      }
+
+      console.log(`[API] Tentativa de busca NFe: ${chaveNotaFiscal}`);
+      
+      // Verificar credenciais
+      const cnpj = process.env.LOGISTICA_CNPJ;
+      const token = process.env.LOGISTICA_TOKEN || process.env.LOGISTICA_API_TOKEN || process.env.API_LOGISTICA_TOKEN;
+      
+      if (!cnpj || !token) {
+        console.log('[API] Credenciais da Logística da Informação não encontradas');
+        return res.json({
+          success: false,
+          error: 'Serviço temporariamente indisponível. Aguardando configuração do token de acesso.',
+          api_error: true,
+          source: 'logistica_config_missing'
+        });
+      }
+
+      // Importar e usar o serviço
+      const { LogisticaInformacaoService } = await import('./logistica-informacao-service');
+      const service = new LogisticaInformacaoService(cnpj, token);
+      
+      console.log(`[API] Fazendo consulta NFe com CNPJ: ${cnpj.substring(0, 8)}...`);
+      const result = await service.fetchNFeXML(chaveNotaFiscal);
+      
+      return res.json(result);
+
+    } catch (error: any) {
+      console.error('[API] Erro no endpoint fetch-from-logistica:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Erro interno do servidor',
+        api_error: true
+      });
+    }
+  });
+
   return createServer(app);
 }
