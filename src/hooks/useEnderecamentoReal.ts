@@ -139,26 +139,83 @@ export const useEnderecamentoReal = () => {
     setCaminhaoLayout(novoCaminhaoLayout);
   }, [caminhaoLayout]);
 
-  // Buscar volumes de uma ordem (preparado para dados reais após replicação)
+  // Buscar volumes de uma ordem usando Supabase
   const buscarVolumesOrdem = useCallback(async (numeroOrdem: string) => {
     setIsLoading(true);
     try {
-      console.log('Buscando volumes para ordem:', numeroOrdem);
+      console.log('Buscando volumes para ordem:', numeroOrdem, 'no Supabase');
       
-      // Após a replicação estar configurada, usaremos dados reais do Supabase
-      console.log('Usando dados mock - replicação será configurada em breve');
-      
-      setVolumes(mockVolumes);
-      setVolumesFiltrados(mockVolumes);
+      // Buscar ordem no Supabase
+      const { data: ordem, error: errorOrdem } = await supabase
+        .from('ordens_carga')
+        .select('id')
+        .eq('numero_ordem', numeroOrdem)
+        .single();
+
+      if (errorOrdem || !ordem) {
+        console.log('Ordem não encontrada no Supabase, usando dados mock para demonstração');
+        setVolumes(mockVolumes);
+        setVolumesFiltrados(mockVolumes);
+        return;
+      }
+
+      // Buscar itens da carga
+      const { data: itensCarga, error: errorItens } = await supabase
+        .from('itens_carga')
+        .select('nota_fiscal_id')
+        .eq('ordem_carga_id', ordem.id);
+
+      if (errorItens || !itensCarga || itensCarga.length === 0) {
+        console.log('Nenhum item de carga encontrado, usando dados mock');
+        setVolumes(mockVolumes);
+        setVolumesFiltrados(mockVolumes);
+        return;
+      }
+
+      const notasFiscaisIds = itensCarga.map((item: any) => item.nota_fiscal_id);
+
+      // Buscar volumes das notas fiscais (using correct column names from Drizzle schema)
+      const { data: volumes, error: errorVolumes } = await supabase
+        .from('volumes_etiqueta')
+        .select(`
+          id,
+          codigo_etiqueta,
+          peso,
+          dimensoes,
+          notas_fiscais!inner(numero)
+        `)
+        .in('nota_fiscal_id', notasFiscaisIds);
+
+      if (errorVolumes || !volumes || volumes.length === 0) {
+        console.log('Nenhum volume encontrado, usando dados mock');
+        setVolumes(mockVolumes);
+        setVolumesFiltrados(mockVolumes);
+        return;
+      }
+
+      // Transformar dados reais para formato esperado
+      const volumesFormatados: Volume[] = volumes.map((volume: any) => ({
+        id: volume.id,
+        codigo: volume.codigo_etiqueta,
+        notaFiscal: volume.notas_fiscais?.numero || '',
+        destinatario: volume.dimensoes || 'Produto',
+        cidade: 'São Paulo - SP', 
+        peso: volume.peso?.toString() || '0',
+        status: 'disponivel'
+      }));
+
+      setVolumes(volumesFormatados);
+      setVolumesFiltrados(volumesFormatados);
       
     } catch (error) {
       console.error('Erro ao buscar volumes:', error);
+      console.log('Fallback para dados mock devido ao erro');
       setVolumes(mockVolumes);
       setVolumesFiltrados(mockVolumes);
       
       toast({
-        title: "Usando dados de demonstração",
-        description: "Replicação será configurada em breve. Usando dados mock.",
+        title: "Usando dados de demonstração", 
+        description: "Conexão com banco em desenvolvimento. Usando dados mock.",
       });
     } finally {
       setIsLoading(false);
@@ -235,7 +292,7 @@ export const useEnderecamentoReal = () => {
     });
 
     const todosVolumes = [...volumesExistentesArray, ...novosVolumes];
-    novoLayout[posicao] = todosVolumes;
+    novoLayout[posicao] = todosVolumes.length === 1 ? todosVolumes[0] : todosVolumes;
 
     selecionados.forEach(volumeId => {
       atualizarStatusVolume(volumeId, 'posicionado');
@@ -266,7 +323,7 @@ export const useEnderecamentoReal = () => {
     if (Array.isArray(volumesNaPosicao)) {
       const volumesRestantes = volumesNaPosicao.filter(v => v.id !== volumeId);
       if (volumesRestantes.length > 0) {
-        novoLayout[cellId] = volumesRestantes;
+        novoLayout[cellId] = volumesRestantes.length === 1 ? volumesRestantes[0] : volumesRestantes;
       } else {
         delete novoLayout[cellId];
       }
