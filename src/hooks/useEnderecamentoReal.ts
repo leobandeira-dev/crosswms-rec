@@ -144,20 +144,14 @@ export const useEnderecamentoReal = () => {
     setIsLoading(true);
     try {
       console.log('Buscando volumes para ordem:', numeroOrdem);
-
-      // Buscar ordem de carga
-      const { data: ordem, error: errorOrdem } = await supabase
-        .from('ordens_carga')
-        .select('id')
-        .eq('numero_ordem', numeroOrdem)
-        .single();
-
-      if (errorOrdem || !ordem) {
-        console.log('Ordem não encontrada no banco, usando dados mock');
-        setVolumes(mockVolumes);
-        setVolumesFiltrados(mockVolumes);
-        return;
-      }
+      
+      // IMPORTANTE: O projeto usa banco Neon via DATABASE_URL, não Supabase
+      // O cliente Supabase atual não conecta no banco correto
+      console.log('Sistema usando dados mock - banco real é Neon, não Supabase');
+      
+      setVolumes(mockVolumes);
+      setVolumesFiltrados(mockVolumes);
+      return;
 
       // Buscar itens da carga
       const { data: itensCarga, error: errorItens } = await supabase
