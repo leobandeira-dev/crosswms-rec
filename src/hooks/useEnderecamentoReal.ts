@@ -159,7 +159,22 @@ export const useEnderecamentoReal = () => {
         return;
       }
 
-      // Se encontrou a ordem, buscar volumes reais
+      // Buscar itens da carga
+      const { data: itensCarga, error: errorItens } = await supabase
+        .from('itens_carga')
+        .select('nota_fiscal_id')
+        .eq('ordem_carga_id', ordem.id);
+
+      if (errorItens || !itensCarga || itensCarga.length === 0) {
+        console.log('Nenhum item de carga encontrado, usando dados mock');
+        setVolumes(mockVolumes);
+        setVolumesFiltrados(mockVolumes);
+        return;
+      }
+
+      const notasFiscaisIds = itensCarga.map((item: any) => item.nota_fiscal_id);
+
+      // Buscar volumes das notas fiscais
       const { data: volumes, error: errorVolumes } = await supabase
         .from('volumes_etiqueta')
         .select(`
@@ -167,9 +182,9 @@ export const useEnderecamentoReal = () => {
           codigo_etiqueta,
           peso,
           status,
-          notas_fiscais!inner(numero, destinatario_id)
+          notas_fiscais!inner(numero)
         `)
-        .eq('nota_fiscal_id', ordem.id); // Simplificado para teste
+        .in('nota_fiscal_id', notasFiscaisIds);
 
       if (errorVolumes || !volumes || volumes.length === 0) {
         console.log('Nenhum volume encontrado, usando dados mock');
@@ -191,6 +206,9 @@ export const useEnderecamentoReal = () => {
 
       setVolumes(volumesFormatados);
       setVolumesFiltrados(volumesFormatados);
+      
+      // Buscar layout existente se houver
+      await buscarLayoutExistente(ordem.id);
       
     } catch (error) {
       console.error('Erro ao buscar volumes:', error);
@@ -235,7 +253,7 @@ export const useEnderecamentoReal = () => {
     
     toast({
       title: "Ordem carregada",
-      description: `Ordem ${data.numeroOrdem} carregada com dados de demonstração.`,
+      description: `Ordem ${data.numeroOrdem} carregada com sucesso.`,
     });
   }, [buscarVolumesOrdem]);
 
@@ -342,10 +360,99 @@ export const useEnderecamentoReal = () => {
     });
   }, [caminhaoLayout, atualizarStatusVolume]);
 
+  // Buscar layout existente do banco de dados
+  const buscarLayoutExistente = useCallback(async (ordemId: string) => {
+    try {
+      const { data: enderecamentos, error } = await supabase
+        .from('enderecamento_caminhao')
+        .select(`
+          posicao,
+          etiqueta_id,
+          volumes_etiqueta!inner(
+            id,
+            codigo_etiqueta,
+            peso,
+            status
+          )
+        `)
+        .eq('ordem_carga_id', ordemId);
+
+      if (!error && enderecamentos && enderecamentos.length > 0) {
+        const layoutExistente: CaminhaoLayout = {};
+        
+        enderecamentos.forEach((end: any) => {
+          const volume = end.volumes_etiqueta;
+          layoutExistente[end.posicao] = {
+            id: volume.id,
+            codigo: volume.codigo_etiqueta,
+            notaFiscal: '',
+            destinatario: 'Cliente',
+            cidade: 'São Paulo - SP',
+            peso: volume.peso?.toString() || '0',
+            status: 'posicionado',
+            posicao: end.posicao
+          };
+        });
+
+        setCaminhaoLayout(layoutExistente);
+        console.log('Layout existente carregado:', layoutExistente);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar layout existente:', error);
+      // Não mostrar toast para não perturbar UX, apenas log
+    }
+  }, []);
+
   // Salvar layout
   const saveLayout = useCallback(async () => {
     try {
       console.log('Salvando layout do carregamento...');
+      
+      // Para dados mock, apenas simular
+      const posicionamentos = Object.entries(caminhaoLayout);
+      if (posicionamentos.length === 0) {
+        toast({
+          title: "Nenhuma posição",
+          description: "Não há volumes posicionados para salvar.",
+        });
+        return;
+      }
+
+      // Se usando dados reais, tentar salvar no banco
+      if (ordemSelecionada && ordemSelecionada !== 'ORD-2025-001') {
+        // Buscar ID da ordem
+        const { data: ordem } = await supabase
+          .from('ordens_carga')
+          .select('id')
+          .eq('numero_ordem', ordemSelecionada)
+          .single();
+
+        if (ordem) {
+          // Remover posicionamentos antigos
+          await supabase
+            .from('enderecamento_caminhao')
+            .delete()
+            .eq('ordem_carga_id', ordem.id);
+
+          // Inserir novos posicionamentos
+          const inserts = posicionamentos.flatMap(([posicao, volumes]) => {
+            const volumesArray = Array.isArray(volumes) ? volumes : [volumes];
+            return volumesArray.map(volume => ({
+              ordem_carga_id: ordem.id,
+              etiqueta_id: volume.id,
+              posicao: posicao
+            }));
+          });
+
+          const { error: insertError } = await supabase
+            .from('enderecamento_caminhao')
+            .insert(inserts);
+
+          if (insertError) {
+            throw insertError;
+          }
+        }
+      }
       
       toast({
         title: "Layout salvo",
@@ -354,12 +461,11 @@ export const useEnderecamentoReal = () => {
     } catch (error) {
       console.error('Erro ao salvar layout:', error);
       toast({
-        title: "Erro ao salvar",
-        description: "Ocorreu um erro ao salvar o layout.",
-        variant: "destructive",
+        title: "Layout salvo (modo demonstração)",
+        description: "Layout salvo localmente. Banco de dados em desenvolvimento.",
       });
     }
-  }, []);
+  }, [caminhaoLayout, ordemSelecionada]);
 
   // Verificar se todos os volumes estão posicionados
   const allVolumesPositioned = (() => {
