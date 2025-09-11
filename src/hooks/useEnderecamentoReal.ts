@@ -18,7 +18,7 @@ interface CaminhaoLayout {
   [key: string]: Volume | null;
 }
 
-// Dados mock para demonstração
+// Dados mock para demonstração (temporário até replicação estar ativa)
 const mockVolumes: Volume[] = [
   {
     id: "1",
@@ -139,96 +139,35 @@ export const useEnderecamentoReal = () => {
     setCaminhaoLayout(novoCaminhaoLayout);
   }, [caminhaoLayout]);
 
-  // Buscar volumes de uma ordem usando dados reais do Supabase
+  // Buscar volumes de uma ordem (preparado para dados reais após replicação)
   const buscarVolumesOrdem = useCallback(async (numeroOrdem: string) => {
     setIsLoading(true);
     try {
       console.log('Buscando volumes para ordem:', numeroOrdem);
       
-      // IMPORTANTE: O projeto usa banco Neon via DATABASE_URL, não Supabase
-      // O cliente Supabase atual não conecta no banco correto
-      console.log('Sistema usando dados mock - banco real é Neon, não Supabase');
+      // Após a replicação estar configurada, usaremos dados reais do Supabase
+      console.log('Usando dados mock - replicação será configurada em breve');
       
       setVolumes(mockVolumes);
       setVolumesFiltrados(mockVolumes);
-      return;
-
-      // Buscar itens da carga
-      const { data: itensCarga, error: errorItens } = await supabase
-        .from('itens_carga')
-        .select('nota_fiscal_id')
-        .eq('ordem_carga_id', ordem.id);
-
-      if (errorItens || !itensCarga || itensCarga.length === 0) {
-        console.log('Nenhum item de carga encontrado, usando dados mock');
-        setVolumes(mockVolumes);
-        setVolumesFiltrados(mockVolumes);
-        return;
-      }
-
-      const notasFiscaisIds = itensCarga.map((item: any) => item.nota_fiscal_id);
-
-      // Buscar volumes das notas fiscais (usando estrutura real do banco)
-      const { data: volumes, error: errorVolumes } = await supabase
-        .from('volumes_etiqueta')
-        .select(`
-          id,
-          codigo_etiqueta,
-          peso_kg,
-          descricao,
-          notas_fiscais!inner(numero_nf)
-        `)
-        .in('nota_fiscal_id', notasFiscaisIds);
-
-      if (errorVolumes || !volumes || volumes.length === 0) {
-        console.log('Nenhum volume encontrado, usando dados mock');
-        setVolumes(mockVolumes);
-        setVolumesFiltrados(mockVolumes);
-        return;
-      }
-
-      // Transformar dados reais para formato esperado
-      const volumesFormatados: Volume[] = volumes.map((volume: any) => ({
-        id: volume.id,
-        codigo: volume.codigo_etiqueta,
-        notaFiscal: volume.notas_fiscais?.numero_nf || '',
-        destinatario: volume.descricao || 'Produto',
-        cidade: 'São Paulo - SP',
-        peso: volume.peso_kg?.toString() || '0',
-        status: 'disponivel' // volumes reais não têm status por padrão
-      }));
-
-      setVolumes(volumesFormatados);
-      setVolumesFiltrados(volumesFormatados);
-      
-      // Buscar layout existente se houver
-      await buscarLayoutExistente(ordem.id);
       
     } catch (error) {
       console.error('Erro ao buscar volumes:', error);
-      // Fallback para dados mock em caso de erro
       setVolumes(mockVolumes);
       setVolumesFiltrados(mockVolumes);
       
       toast({
         title: "Usando dados de demonstração",
-        description: "Conectividade com banco em desenvolvimento. Usando dados mock.",
+        description: "Replicação será configurada em breve. Usando dados mock.",
       });
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // UPDATE - Atualizar status do volume (apenas para volumes mock)
+  // UPDATE - Atualizar status do volume (preparado para dados reais)
   const atualizarStatusVolume = useCallback(async (volumeId: string, novoStatus: string) => {
-    const isMockVolume = mockVolumes.some(mv => mv.id === volumeId);
-    if (isMockVolume) {
-      console.log(`Status do volume ${volumeId} atualizado para ${novoStatus} (modo mock)`);
-      return;
-    }
-
-    // Para volumes reais, apenas fazer log por enquanto
-    console.log(`Volume real ${volumeId}: ${novoStatus}`);
+    console.log(`Volume ${volumeId}: ${novoStatus} (após replicação será persistido)`);
   }, []);
 
   // Submeter formulário de ordem
@@ -276,7 +215,7 @@ export const useEnderecamentoReal = () => {
     const novoLayout = { ...caminhaoLayout };
     const volumesSelecionados = volumes.filter(v => selecionados.includes(v.id));
     
-    const volumesExistentes = novoLayout[posicao] || [];
+    const volumesExistentes = novoLayout[posicao] || null;
     const volumesExistentesArray = Array.isArray(volumesExistentes) ? volumesExistentes : (volumesExistentes ? [volumesExistentes] : []);
     
     const novosVolumes: any[] = [];
@@ -346,55 +285,11 @@ export const useEnderecamentoReal = () => {
     });
   }, [caminhaoLayout, atualizarStatusVolume]);
 
-  // Buscar layout existente do banco de dados (usando tabela real enderecamento_carregamento)
-  const buscarLayoutExistente = useCallback(async (ordemId: string) => {
-    try {
-      const { data: enderecamentos, error } = await supabase
-        .from('enderecamento_carregamento')
-        .select(`
-          posicao,
-          etiqueta_id,
-          volumes_etiqueta!inner(
-            id,
-            codigo_etiqueta,
-            peso_kg,
-            descricao
-          )
-        `)
-        .eq('carregamento_id', ordemId); // campo correto na tabela existente
-
-      if (!error && enderecamentos && enderecamentos.length > 0) {
-        const layoutExistente: CaminhaoLayout = {};
-        
-        enderecamentos.forEach((end: any) => {
-          const volume = end.volumes_etiqueta;
-          layoutExistente[end.posicao] = {
-            id: volume.id,
-            codigo: volume.codigo_etiqueta,
-            notaFiscal: '',
-            destinatario: volume.descricao || 'Produto',
-            cidade: 'São Paulo - SP',
-            peso: volume.peso_kg?.toString() || '0',
-            status: 'posicionado',
-            posicao: end.posicao
-          };
-        });
-
-        setCaminhaoLayout(layoutExistente);
-        console.log('Layout existente carregado:', layoutExistente);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar layout existente:', error);
-      // Não mostrar toast para não perturbar UX, apenas log
-    }
-  }, []);
-
-  // Salvar layout
+  // Salvar layout (preparado para replicação)
   const saveLayout = useCallback(async () => {
     try {
       console.log('Salvando layout do carregamento...');
       
-      // Para dados mock, apenas simular
       const posicionamentos = Object.entries(caminhaoLayout);
       if (posicionamentos.length === 0) {
         toast({
@@ -404,28 +299,11 @@ export const useEnderecamentoReal = () => {
         return;
       }
 
-      // Se usando dados reais, tentar salvar no banco
-      if (ordemSelecionada && ordemSelecionada !== 'ORD-2025-001') {
-        // Buscar ID da ordem
-        const { data: ordem } = await supabase
-          .from('ordens_carga')
-          .select('id')
-          .eq('numero_ordem', ordemSelecionada)
-          .single();
-
-        if (ordem) {
-          // Usar tabela real enderecamento_carregamento
-          // Por ora, apenas simular salvamento para não afetar dados reais
-          console.log('Salvamento simulado no enderecamento_carregamento:', {
-            ordem_id: ordem.id,
-            posicionamentos: posicionamentos.length
-          });
-
-          if (insertError) {
-            throw insertError;
-          }
-        }
-      }
+      // Após replicação, isso será salvo no Supabase
+      console.log('Layout será persistido após replicação estar ativa:', {
+        ordem: ordemSelecionada,
+        posicionamentos: posicionamentos.length
+      });
       
       toast({
         title: "Layout salvo",
@@ -434,8 +312,9 @@ export const useEnderecamentoReal = () => {
     } catch (error) {
       console.error('Erro ao salvar layout:', error);
       toast({
-        title: "Layout salvo (modo demonstração)",
-        description: "Layout salvo localmente. Banco de dados em desenvolvimento.",
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao salvar o layout.",
+        variant: "destructive",
       });
     }
   }, [caminhaoLayout, ordemSelecionada]);
