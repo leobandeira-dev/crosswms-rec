@@ -255,6 +255,16 @@ export const volumes_etiqueta = pgTable("volumes_etiqueta", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
+// Tabela para endereçamento no caminhão
+export const enderecamento_caminhao = pgTable("enderecamento_caminhao", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ordem_carga_id: varchar("ordem_carga_id").notNull(),
+  etiqueta_id: varchar("etiqueta_id").notNull(),
+  posicao: varchar("posicao").notNull(), // Ex: E1, C2, D3
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
 export const historicoVersoes = pgTable("historico_versoes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   versao: varchar("versao").notNull(),
