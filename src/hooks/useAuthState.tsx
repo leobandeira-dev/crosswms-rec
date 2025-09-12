@@ -1,43 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
-
-interface Usuario {
-  id: string;
-  email: string;
-  nome: string;
-  telefone?: string;
-  avatar_url?: string;
-  empresa_id?: string;
-  perfil_id?: string;
-  status?: string;
-  tipo_usuario?: string;
-  created_at: string;
-  updated_at: string;
-  empresa?: {
-    id: string;
-    nome: string;
-    cnpj: string;
-    inscricao_estadual?: string;
-    endereco?: string;
-    numero?: string;
-    complemento?: string;
-    bairro?: string;
-    cidade?: string;
-    uf?: string;
-    cep?: string;
-    telefone?: string;
-    email?: string;
-    website?: string;
-    tipo_empresa?: string;
-    empresa_matriz_id?: string;
-    status?: string;
-    plano_assinatura?: string;
-    data_vencimento?: string;
-    configuracoes?: any;
-    created_at?: string;
-    updated_at?: string;
-  };
-}
+import { Usuario } from '../types/supabase.types';
 
 interface Session {
   access_token: string;
