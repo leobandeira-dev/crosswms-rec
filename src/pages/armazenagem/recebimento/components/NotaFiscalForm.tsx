@@ -70,14 +70,14 @@ const NotaFiscalForm: React.FC<NotaFiscalFormProps> = ({
       // Map the nota fiscal data to form fields
       const formData = {
         // Dados básicos da nota fiscal
-        numeroNF: notaFiscalData.numero || '',
+        numeroNF: notaFiscalData.numero_nf || '',
         serieNF: notaFiscalData.serie || '',
-        chaveNF: notaFiscalData.chave_acesso || '',
+        chaveNF: notaFiscalData.chave_nota_fiscal || '',
         valorTotal: notaFiscalData.valor_total?.toString() || '',
         pesoBruto: notaFiscalData.peso_bruto?.toString() || '',
         quantidadeVolumes: notaFiscalData.quantidade_volumes?.toString() || '',
         dataEmissao: notaFiscalData.data_emissao ? new Date(notaFiscalData.data_emissao).toISOString().split('T')[0] : '',
-        tipoOperacao: notaFiscalData.tipo_operacao || '',
+        tipoOperacao: notaFiscalData.natureza_operacao || '',
         
         // Dados do emitente
         emitenteCnpj: notaFiscalData.emitente_cnpj || '',

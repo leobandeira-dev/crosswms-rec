@@ -278,10 +278,20 @@ const NotasFiscaisEntrada = () => {
       }
     }
     
-    // Clear all cached invoice data for fresh start
-    localStorage.removeItem('processedInvoices');
-    setProcessedInvoices([]);
-  }, []);
+  // Clear all cached invoice data for fresh start
+  localStorage.removeItem('processedInvoices');
+  setProcessedInvoices([]);
+}, []);
+
+// DEBUG: Monitor formData changes
+useEffect(() => {
+  console.log('[DEBUG FORM] formData atualizado:', formData);
+  console.log('[DEBUG FORM] Campos específicos:');
+  console.log('[DEBUG FORM] - numero_nota:', formData.numero_nota);
+  console.log('[DEBUG FORM] - serie_nota:', formData.serie_nota);
+  console.log('[DEBUG FORM] - data_hora_emissao:', formData.data_hora_emissao);
+  console.log('[DEBUG FORM] - valor_nota_fiscal:', formData.valor_nota_fiscal);
+}, [formData]);
 
 
 
@@ -1180,55 +1190,138 @@ const NotasFiscaisEntrada = () => {
         source: result.source
       });
 
+      // Log básico para debug
+      console.log('[DEBUG] Result completo:', result);
+      console.log('[DEBUG] result.success:', result.success);
+      console.log('[DEBUG] result.data:', result.data);
+      console.log('[DEBUG] typeof result.success:', typeof result.success);
+      console.log('[DEBUG] typeof result.data:', typeof result.data);
+      
+      // Verificar se result.success é exatamente true
+      console.log('[DEBUG] result.success === true:', result.success === true);
+      console.log('[DEBUG] result.success == true:', result.success == true);
+      console.log('[DEBUG] !!result.success:', !!result.success);
+
+      console.log('[DEBUG] Verificação antes do if:', {
+        'result.success': result.success,
+        'result.data': result.data,
+        'typeof result.success': typeof result.success,
+        'typeof result.data': typeof result.data
+      });
+
+      console.log('[DEBUG] Resposta da API recebida:', result);
+      console.log('[DEBUG] result.success:', result.success);
+      console.log('[DEBUG] result.data:', result.data);
+
       if (result.success && result.data) {
-        // Map API response to form fields properly
-        const mappedData = {
+        console.log('[DEBUG] Dados recebidos da API:', result.data);
+        console.log('[DEBUG] Tipo de result.data:', typeof result.data);
+        console.log('[DEBUG] Chaves de result.data:', Object.keys(result.data || {}));
+        console.log('[DEBUG] Campos específicos da API:', {
           chave_nota_fiscal: result.data.chave_nota_fiscal,
-          numero_nota: result.data.numero_nota,
-          serie_nota: result.data.serie_nota,
-          data_hora_emissao: result.data.data_hora_emissao,
-          natureza_operacao: result.data.natureza_operacao,
+          numero_nf: result.data.numero_nf,
+          serie: result.data.serie,
+          data_emissao: result.data.data_emissao,
+          valor_total: result.data.valor_total
+        });
+        
+        // Log específico para valor_nota_fiscal
+        console.log('[DEBUG] VALOR DA NOTA FISCAL:', result.data.valor_total);
+        
+        // Map API response to form fields properly - ensure all values are strings
+        const mappedData = {
+          chave_nota_fiscal: result.data.chave_nota_fiscal || '',
+          numero_nota: result.data.numero_nf || '',
+          serie_nota: result.data.serie || '',
+          data_hora_emissao: result.data.data_emissao ? new Date(result.data.data_emissao).toISOString().split('T')[0] : '',
+          natureza_operacao: result.data.natureza_operacao || '',
           // Emitente fields
-          emitente_cnpj: result.data.emitente_cnpj,
-          emitente_razao_social: result.data.emitente_razao_social,
-          emitente_telefone: result.data.emitente_telefone,
-          emitente_uf: result.data.emitente_uf,
-          emitente_cidade: result.data.emitente_cidade,
-          emitente_bairro: result.data.emitente_bairro,
-          emitente_endereco: result.data.emitente_endereco,
-          emitente_numero: result.data.emitente_numero,
-          emitente_cep: result.data.emitente_cep,
+          emitente_cnpj: result.data.emitente_cnpj || '',
+          emitente_razao_social: result.data.emitente_razao_social || '',
+          emitente_telefone: result.data.emitente_telefone || '',
+          emitente_uf: result.data.emitente_uf || '',
+          emitente_cidade: result.data.emitente_cidade || '',
+          emitente_bairro: result.data.emitente_bairro || '',
+          emitente_endereco: result.data.emitente_endereco || '',
+          emitente_numero: result.data.emitente_numero || '',
+          emitente_cep: result.data.emitente_cep || '',
           // Destinatário fields  
-          destinatario_cnpj: result.data.destinatario_cnpj,
-          destinatario_razao_social: result.data.destinatario_razao_social,
-          destinatario_telefone: result.data.destinatario_telefone,
-          destinatario_uf: result.data.destinatario_uf,
-          destinatario_cidade: result.data.destinatario_cidade,
-          destinatario_bairro: result.data.destinatario_bairro,
-          destinatario_endereco: result.data.destinatario_endereco,
-          destinatario_numero: result.data.destinatario_numero,
-          destinatario_cep: result.data.destinatario_cep,
+          destinatario_cnpj: result.data.destinatario_cnpj || '',
+          destinatario_razao_social: result.data.destinatario_razao_social || '',
+          destinatario_telefone: result.data.destinatario_telefone || '',
+          destinatario_uf: result.data.destinatario_uf || '',
+          destinatario_cidade: result.data.destinatario_cidade || '',
+          destinatario_bairro: result.data.destinatario_bairro || '',
+          destinatario_endereco: result.data.destinatario_endereco || '',
+          destinatario_numero: result.data.destinatario_numero || '',
+          destinatario_cep: result.data.destinatario_cep || '',
           // Financial data
-          valor_nota_fiscal: result.data.valor_nota_fiscal,
-          valor_produtos: result.data.valor_produtos,
+          valor_nota_fiscal: result.data.valor_total || '',
+          valor_produtos: result.data.valor_total || '',
           // Volume data
-          quantidade_volumes: result.data.quantidade_volumes,
-          peso_bruto: result.data.peso_bruto,
-          peso_liquido: result.data.peso_liquido,
+          quantidade_volumes: result.data.quantidade_volumes || '',
+          peso_bruto: result.data.peso_bruto || '',
+          peso_liquido: result.data.peso_liquido || '',
           // Additional info
-          informacoes_complementares: result.data.informacoes_complementares,
-          numero_pedido: result.data.numero_pedido
+          informacoes_complementares: result.data.informacoes_complementares || '',
+          numero_pedido: result.data.numero_pedido || ''
         };
 
+        console.log('[DEBUG] Dados mapeados para o formulário:', mappedData);
+        console.log('[DEBUG] Campos específicos mapeados:', {
+          numero_nota: mappedData.numero_nota,
+          serie_nota: mappedData.serie_nota,
+          data_hora_emissao: mappedData.data_hora_emissao,
+          valor_nota_fiscal: mappedData.valor_nota_fiscal
+        });
+        
+        // Log específico para valor_nota_fiscal no mapeamento
+        console.log('[DEBUG] VALOR DA NOTA FISCAL - Mapeamento:');
+        console.log('  - result.data.valor_total:', result.data.valor_total);
+        console.log('  - mappedData.valor_nota_fiscal:', mappedData.valor_nota_fiscal);
+        console.log('  - typeof mappedData.valor_nota_fiscal:', typeof mappedData.valor_nota_fiscal);
+        console.log('[DEBUG] Campos específicos:', {
+          numero_nota: mappedData.numero_nota,
+          serie_nota: mappedData.serie_nota,
+          data_hora_emissao: mappedData.data_hora_emissao,
+          valor_nota_fiscal: mappedData.valor_nota_fiscal
+        });
+        
         // Populate form with mapped data
-        setFormData(prevData => ({
-          ...prevData,
-          ...mappedData
-        }));
+        console.log('[DEBUG] Atualizando estado do formulário com dados mapeados...');
+        setFormData(prevData => {
+          const newData = {
+            ...prevData,
+            ...mappedData
+          };
+          console.log('[DEBUG] Novo estado do formulário:', newData);
+          console.log('[DEBUG] Campos específicos no novo estado:', {
+            numero_nota: newData.numero_nota,
+            serie_nota: newData.serie_nota,
+            data_hora_emissao: newData.data_hora_emissao,
+            valor_nota_fiscal: newData.valor_nota_fiscal
+          });
+          
+          // Verificar se os campos estão sendo definidos corretamente
+          console.log('[DEBUG] Verificação individual dos campos:');
+          console.log('  - numero_nota:', mappedData.numero_nota, '->', newData.numero_nota);
+          console.log('  - serie_nota:', mappedData.serie_nota, '->', newData.serie_nota);
+          console.log('  - data_hora_emissao:', mappedData.data_hora_emissao, '->', newData.data_hora_emissao);
+          console.log('  - valor_nota_fiscal:', mappedData.valor_nota_fiscal, '->', newData.valor_nota_fiscal);
+          
+          // Log específico para valor_nota_fiscal no estado
+          console.log('[DEBUG] VALOR DA NOTA FISCAL - Estado do formulário:');
+          console.log('  - mappedData.valor_nota_fiscal:', mappedData.valor_nota_fiscal);
+          console.log('  - newData.valor_nota_fiscal:', newData.valor_nota_fiscal);
+          console.log('  - typeof newData.valor_nota_fiscal:', typeof newData.valor_nota_fiscal);
+          console.log('  - newData.valor_nota_fiscal === mappedData.valor_nota_fiscal:', newData.valor_nota_fiscal === mappedData.valor_nota_fiscal);
+          
+          return newData;
+        });
 
         toast({
           title: "✅ NFe encontrada via Logística da Informação!",
-          description: `Dados da NFe ${result.data.numero_nota} carregados com sucesso.`
+          description: `Dados da NFe ${result.data.numero_nf} carregados com sucesso.`
         });
 
         // Store data in sessionStorage for other components

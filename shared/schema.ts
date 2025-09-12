@@ -111,6 +111,42 @@ export const configuracoes_email = pgTable("configuracoes_email", {
   updated_at: timestamp("updated_at").defaultNow(),
 });
 
+export const configuracoes_sistema = pgTable("configuracoes_sistema", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  empresa_id: varchar("empresa_id").notNull(),
+  
+  // API Logística da Informação
+  logistica_cnpj: varchar("logistica_cnpj"),
+  logistica_token: varchar("logistica_token"),
+  logistica_enabled: boolean("logistica_enabled").default(false),
+  
+  // API CrossXML
+  crossxml_api_key: varchar("crossxml_api_key"),
+  crossxml_enabled: boolean("crossxml_enabled").default(false),
+  
+  // API NSDocs
+  nsdocs_client_id: varchar("nsdocs_client_id"),
+  nsdocs_client_secret: varchar("nsdocs_client_secret"),
+  nsdocs_enabled: boolean("nsdocs_enabled").default(false),
+  
+  // Configurações Gerais
+  sistema_versao: varchar("sistema_versao").default("CrossWMS v2.0"),
+  sistema_ambiente: varchar("sistema_ambiente").default("production"),
+  backup_automatico: boolean("backup_automatico").default(true),
+  backup_horario: varchar("backup_horario").default("02:00"),
+  sessao_timeout: varchar("sessao_timeout").default("60"),
+  max_tentativas_login: varchar("max_tentativas_login").default("5"),
+  senha_complexidade: boolean("senha_complexidade").default(true),
+  
+  // Notificações
+  notif_email_novos_usuarios: boolean("notif_email_novos_usuarios").default(true),
+  notif_email_aprovacoes: boolean("notif_email_aprovacoes").default(true),
+  notif_email_operacoes: boolean("notif_email_operacoes").default(false),
+  
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
 export const motoristas = pgTable("motoristas", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   nome: varchar("nome").notNull(),
@@ -530,6 +566,29 @@ export const insertConfiguracaoEmailSchema = z.object({
   ativo: z.boolean().default(true),
 }).merge(timestampSchema);
 
+export const insertConfiguracaoSistemaSchema = z.object({
+  id: z.string().optional(),
+  empresa_id: z.string(),
+  logistica_cnpj: z.string().optional(),
+  logistica_token: z.string().optional(),
+  logistica_enabled: z.boolean().default(false),
+  crossxml_api_key: z.string().optional(),
+  crossxml_enabled: z.boolean().default(false),
+  nsdocs_client_id: z.string().optional(),
+  nsdocs_client_secret: z.string().optional(),
+  nsdocs_enabled: z.boolean().default(false),
+  sistema_versao: z.string().default("CrossWMS v2.0"),
+  sistema_ambiente: z.string().default("production"),
+  backup_automatico: z.boolean().default(true),
+  backup_horario: z.string().default("02:00"),
+  sessao_timeout: z.string().default("60"),
+  max_tentativas_login: z.string().default("5"),
+  senha_complexidade: z.boolean().default(true),
+  notif_email_novos_usuarios: z.boolean().default(true),
+  notif_email_aprovacoes: z.boolean().default(true),
+  notif_email_operacoes: z.boolean().default(false),
+}).merge(timestampSchema);
+
 export const insertMotoristaSchema = z.object({
   id: z.string().optional(),
   nome: z.string(),
@@ -565,6 +624,7 @@ export type PerfilModulo = typeof perfilModulos.$inferSelect;
 export type Assinatura = typeof assinaturas.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type ConfiguracaoEmail = typeof configuracoes_email.$inferSelect;
+export type ConfiguracaoSistema = typeof configuracoes_sistema.$inferSelect;
 export type Motorista = typeof motoristas.$inferSelect;
 export type Veiculo = typeof veiculos.$inferSelect;
 export type ClienteTransportador = typeof clientesTransportador.$inferSelect;
@@ -585,5 +645,6 @@ export type InsertPermissao = z.infer<typeof insertPermissaoSchema>;
 export type InsertAssinatura = z.infer<typeof insertAssinaturaSchema>;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type InsertConfiguracaoEmail = z.infer<typeof insertConfiguracaoEmailSchema>;
+export type InsertConfiguracaoSistema = z.infer<typeof insertConfiguracaoSistemaSchema>;
 export type InsertMotorista = z.infer<typeof insertMotoristaSchema>;
 export type InsertVeiculo = z.infer<typeof insertVeiculoSchema>;
