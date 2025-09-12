@@ -27,7 +27,6 @@ const EnderecamentoCaminhao: React.FC = () => {
     toggleSelecao,
     selecionarTodos,
     moverVolumesSelecionados,
-    alocarVolumes,
     removerVolume,
     saveLayout,
     allVolumesPositioned,
@@ -67,7 +66,6 @@ const EnderecamentoCaminhao: React.FC = () => {
             onSelectAll={selecionarTodos}
             onCellClick={moverVolumesSelecionados}
             onRemoveVolume={removerVolume}
-            onAllocateVolumes={alocarVolumes}
             onSaveLayout={saveLayout}
             onUpdateLinhas={atualizarNumeroLinhas}
             hasSelectedVolumes={selecionados.length > 0}

@@ -25,7 +25,6 @@ interface TruckCellProps {
   hasSelectedVolumes: boolean;
   onClick: () => void;
   onRemoveVolume: (volumeId: string, cellId: string) => void;
-  onOpenVolumeSelection: (cellId: string, cellPosition: string) => void;
 }
 
 const TruckCell: React.FC<TruckCellProps> = ({
@@ -33,8 +32,7 @@ const TruckCell: React.FC<TruckCellProps> = ({
   volumes,
   hasSelectedVolumes,
   onClick,
-  onRemoveVolume,
-  onOpenVolumeSelection
+  onRemoveVolume
 }) => {
   // Contar volumes por nota fiscal
   const contarVolumesPorNF = (volumes: Volume[]) => {
@@ -59,23 +57,17 @@ const TruckCell: React.FC<TruckCellProps> = ({
 
   const volumesInfo = contarVolumesPorNF(volumes);
 
-  const handleCellClick = () => {
-    // Determinar a posição da célula baseada no ID
-    const position = id.replace('cell-', '').replace('-', ' ').toUpperCase();
-    onOpenVolumeSelection(id, position);
-  };
-
   return (
     <div 
-      className={`flex-1 border-r last:border-r-0 p-4 min-h-[160px] cursor-pointer hover:bg-blue-50 transition-all duration-200 ${
-        volumes.length > 0 ? 'bg-white shadow-sm' : 'bg-gray-50'
-      }`}
-      onClick={handleCellClick}
+      className={`flex-1 border-r last:border-r-0 p-2 min-h-[120px] ${
+        hasSelectedVolumes ? 'hover:bg-blue-50 cursor-pointer' : ''
+      } ${volumes.length > 0 ? 'bg-white' : ''}`}
+      onClick={onClick}
     >
       {volumesInfo.length > 0 ? (
-        <div className="text-sm">
+        <div className="text-xs">
           {/* Cabeçalho da tabela */}
-          <div className="grid grid-cols-12 gap-2 mb-2 text-xs font-bold text-gray-700 border-b-2 border-gray-200 pb-2">
+          <div className="grid grid-cols-12 gap-1 mb-1 text-[10px] font-semibold text-gray-600 border-b pb-1">
             <div className="col-span-3">NF</div>
             <div className="col-span-6">Fornecedor</div>
             <div className="col-span-2">Qtd</div>
@@ -83,21 +75,21 @@ const TruckCell: React.FC<TruckCellProps> = ({
           </div>
           
           {/* Linhas de dados */}
-          <div className="space-y-2 max-h-[100px] overflow-y-auto">
+          <div className="space-y-1 max-h-[80px] overflow-y-auto">
             {volumesInfo.map((info, idx) => (
-              <div key={idx} className="grid grid-cols-12 gap-2 items-center py-2 hover:bg-gray-50 rounded-lg px-2">
-                <div className="col-span-3 font-bold text-blue-600 text-xs">{info.nf}</div>
-                <div className="col-span-6 text-gray-700 truncate text-xs" title={info.fornecedor || 'N/A'}>
-                  {info.fornecedor && info.fornecedor.length > 20 ? `${info.fornecedor.substring(0, 20)}...` : (info.fornecedor || 'N/A')}
+              <div key={idx} className="grid grid-cols-12 gap-1 items-center py-1 hover:bg-gray-50 rounded">
+                <div className="col-span-3 font-medium text-blue-600">{info.nf}</div>
+                <div className="col-span-6 text-gray-700 truncate" title={info.fornecedor || 'N/A'}>
+                  {info.fornecedor && info.fornecedor.length > 15 ? `${info.fornecedor.substring(0, 15)}...` : (info.fornecedor || 'N/A')}
                 </div>
-                <div className="col-span-2 text-center font-bold text-green-600 text-sm">
+                <div className="col-span-2 text-center font-semibold text-green-600">
                   {info.count}
                 </div>
                 <div className="col-span-1 flex justify-center">
                   <Button 
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full"
+                    className="h-4 w-4 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
                     onClick={(e) => {
                       e.stopPropagation();
                       volumes
@@ -113,11 +105,8 @@ const TruckCell: React.FC<TruckCellProps> = ({
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-full text-base text-gray-400 font-medium">
-          <div className="text-center">
-            <div className="text-3xl mb-2">📦</div>
-            <div>Clique para alocar</div>
-          </div>
+        <div className="flex items-center justify-center h-full text-xs text-gray-400">
+          {hasSelectedVolumes ? 'Clique para alocar' : 'Vazio'}
         </div>
       )}
     </div>
