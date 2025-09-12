@@ -9,13 +9,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { user, session, loading, setUser, connectionError } = authState;
   const { signIn, signUp, signOut, forgotPassword, updatePassword } = useAuthActions(
     (loadingState: boolean) => {}, // Mock setLoading function
-    setUser
+    setUser as any
   );
 
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: user as any,
         session,
         loading,
         connectionError,
@@ -24,7 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signOut,
         forgotPassword,
         updatePassword,
-        setUser,
+        setUser: setUser as any,
       }}
     >
       {children}
