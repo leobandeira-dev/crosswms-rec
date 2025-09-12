@@ -150,7 +150,6 @@ import ReportsDashboard from '@/pages/relatorios/ReportsDashboard';
 
 export const SimpleRouter = () => {
   const [location] = useLocation();
-  const { user } = useAuth();
 
   // Simple path matching
   const path = location.split('?')[0]; // Remove query params for matching
