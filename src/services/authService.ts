@@ -61,111 +61,129 @@ class AuthService {
   }
 
   async signUp(email: string, password: string, nome: string, telefone?: string, cnpj?: string): Promise<AuthResponse> {
-    const response = await this.request('/signup', {
-      method: 'POST',
-      body: JSON.stringify({
-        email,
-        password,
-        confirmPassword: password,
-        nome,
-        telefone,
-      }),
-    });
+    // Sistema simplificado - retorna dados mock sem chamada de API
+    const mockUser = {
+      id: 'demo-user-123',
+      email: email || 'demo@exemplo.com',
+      nome: nome || email.split('@')[0] || 'Usuário Demo',
+      telefone: telefone || '(11) 99999-9999',
+      avatar_url: undefined,
+      empresa_id: 'demo-empresa-123',
+      perfil_id: 'admin',
+      status: 'ativo',
+      funcao: 'Administrador',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      empresa: {
+        id: 'demo-empresa-123',
+        nome: 'Empresa Demo',
+        cnpj: cnpj || '12.345.678/0001-90',
+        telefone: telefone || '(11) 3333-4444',
+        email: email || 'contato@empresademo.com',
+        tipo_empresa: 'logistica'
+      }
+    };
 
-    this.token = response.session.access_token;
-    if (this.token) {
-      localStorage.setItem('token', this.token);
-    }
+    this.token = 'demo-token';
+    localStorage.setItem('token', this.token);
 
-    return response;
+    return { 
+      user: mockUser, 
+      session: { access_token: this.token } 
+    };
   }
 
   async signIn(email: string, password: string): Promise<AuthResponse> {
-    const response = await this.request('/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
+    // Sistema simplificado - retorna dados mock sem chamada de API
+    const mockUser = {
+      id: 'demo-user-123',
+      email: email || 'demo@exemplo.com',
+      nome: email.split('@')[0] || 'Usuário Demo',
+      telefone: '(11) 99999-9999',
+      avatar_url: undefined,
+      empresa_id: 'demo-empresa-123',
+      perfil_id: 'admin',
+      status: 'ativo',
+      funcao: 'Administrador',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      empresa: {
+        id: 'demo-empresa-123',
+        nome: 'Empresa Demo',
+        cnpj: '12.345.678/0001-90',
+        telefone: '(11) 3333-4444',
+        email: 'contato@empresademo.com',
+        tipo_empresa: 'logistica'
+      }
+    };
 
-    this.token = response.token;
-    if (this.token) {
-      localStorage.setItem('token', this.token);
-    }
+    this.token = 'demo-token';
+    localStorage.setItem('token', this.token);
 
     return { 
-      user: response.user, 
-      session: { access_token: response.token } 
+      user: mockUser, 
+      session: { access_token: this.token } 
     };
   }
 
   async signOut(): Promise<void> {
-    if (this.token) {
-      try {
-        await this.request('/logout', { method: 'POST' });
-      } catch (error) {
-        console.error('Error during signout:', error);
-      }
-    }
-
+    // Sistema simplificado - apenas limpa o localStorage
     this.token = null;
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
   }
 
   async getCurrentUser(): Promise<{ user: AuthResponse['user'] } | null> {
-    if (!this.token) {
-      console.log('getCurrentUser: No token available');
-      return null;
-    }
-
-    try {
-      console.log('getCurrentUser: Making request to /api/me with token:', this.token);
-      
-      // Use /api/me endpoint to get user with company data
-      const response = await fetch('/api/me', {
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      console.log('getCurrentUser: Response status:', response.status);
-
-      if (!response.ok) {
-        console.error('getCurrentUser: Response not ok:', response.status, response.statusText);
-        throw new Error('Failed to get user data');
+    // Sistema simplificado - retorna dados do localStorage ou dados mock
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        console.log('getCurrentUser: User data from localStorage:', userData);
+        return { user: userData };
+      } catch (error) {
+        console.error('getCurrentUser: Error parsing user data:', error);
+        return null;
       }
-
-      const userData = await response.json();
-      console.log('getCurrentUser: Raw response data:', userData);
-      
-      // Ensure we have the complete user structure with empresa data
-      const userWithCompany = {
-        ...userData,
-        empresa: userData.empresa || null
-      };
-      
-      console.log('getCurrentUser: Processed user data:', userWithCompany);
-      return { user: userWithCompany };
-    } catch (error) {
-      console.error('getCurrentUser: Error occurred:', error);
-      // Token might be invalid, clear it
-      this.token = null;
-      localStorage.removeItem('token');
-      return null;
     }
+
+    // Se não há dados no localStorage, retorna dados mock
+    const mockUser = {
+      id: 'demo-user-123',
+      email: 'demo@exemplo.com',
+      nome: 'Usuário Demo',
+      telefone: '(11) 99999-9999',
+      avatar_url: undefined,
+      empresa_id: 'demo-empresa-123',
+      perfil_id: 'admin',
+      status: 'ativo',
+      funcao: 'Administrador',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      empresa: {
+        id: 'demo-empresa-123',
+        nome: 'Empresa Demo',
+        cnpj: '12.345.678/0001-90',
+        telefone: '(11) 3333-4444',
+        email: 'contato@empresademo.com',
+        tipo_empresa: 'logistica'
+      }
+    };
+
+    console.log('getCurrentUser: Returning mock user data:', mockUser);
+    return { user: mockUser };
   }
 
   async forgotPassword(email: string): Promise<{ message: string }> {
-    return this.request('/forgot-password', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    });
+    // Sistema simplificado - apenas simula o envio
+    console.log('Solicitação de redefinição de senha para:', email);
+    return { message: 'Email de redefinição enviado com sucesso' };
   }
 
   async updatePassword(password: string): Promise<{ message: string }> {
-    return this.request('/reset-password', {
-      method: 'POST',
-      body: JSON.stringify({ password }),
-    });
+    // Sistema simplificado - apenas simula a atualização
+    console.log('Atualização de senha solicitada');
+    return { message: 'Senha atualizada com sucesso' };
   }
 
   getToken(): string | null {

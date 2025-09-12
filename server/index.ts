@@ -128,15 +128,19 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 8080
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
+  // Use port from environment or default to 8080
+  // Replit will handle port mapping
   const port = process.env.PORT || 8080;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
+  }).on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      log(`Port ${port} is in use, trying port ${port + 1}`);
+      server.listen(port + 1, "0.0.0.0", () => {
+        log(`serving on port ${port + 1}`);
+      });
+    } else {
+      log(`Server error: ${err.message}`);
+    }
   });
 })();

@@ -50,24 +50,29 @@ export const useAuthState = () => {
   const [connectionError, setConnectionError] = useState<boolean>(false);
 
   useEffect(() => {
-    // Simplificar auth state para evitar erros - sistema sem autenticação
-    setLoading(false);
+    // Sistema simplificado - sempre tenta carregar usuário do localStorage
+    setLoading(true);
     setConnectionError(false);
     
-    // Verificar se há token mock
+    // Verificar se há dados de usuário no localStorage
     const token = localStorage.getItem('token');
-    if (token === 'demo-token') {
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        try {
-          const userData = JSON.parse(userStr);
-          setUser(userData);
-          setSession({ access_token: token });
-        } catch (error) {
-          console.log('Erro ao parsear usuário do localStorage');
-        }
+    const userStr = localStorage.getItem('user');
+    
+    if (token && userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        setUser(userData);
+        setSession({ access_token: token });
+        console.log('Usuário carregado do localStorage:', userData);
+      } catch (error) {
+        console.log('Erro ao parsear usuário do localStorage:', error);
+        // Limpar dados inválidos
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
     }
+    
+    setLoading(false);
   }, []);
 
   return {

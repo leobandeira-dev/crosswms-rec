@@ -53,33 +53,62 @@ export const useAuthActions = (
     try {
       console.log('Tentativa de login com:', email);
       
-      // Primeiro faz login para obter token
-      const response = await authService.signIn(email, password);
-      console.log('Login response:', response);
+      // Sistema simplificado - aceita qualquer email/senha
+      const mockUser: Usuario = {
+        id: 'demo-user-123',
+        email: email || 'demo@exemplo.com',
+        nome: email.split('@')[0] || 'Usuário Demo',
+        telefone: '(11) 99999-9999',
+        avatar_url: undefined,
+        empresa_id: 'demo-empresa-123',
+        perfil_id: 'admin',
+        status: 'ativo',
+        tipo_usuario: 'admin',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        empresa: {
+          id: 'demo-empresa-123',
+          nome: 'Empresa Demo',
+          cnpj: '12.345.678/0001-90',
+          inscricao_estadual: '123456789',
+          endereco: 'Rua Demo, 123',
+          numero: '123',
+          complemento: 'Sala 1',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          uf: 'SP',
+          cep: '01234-567',
+          telefone: '(11) 3333-4444',
+          email: 'contato@empresademo.com',
+          website: 'https://empresademo.com',
+          tipo_empresa: 'logistica',
+          empresa_matriz_id: null,
+          status: 'ativa',
+          plano_assinatura: 'premium',
+          data_vencimento: '2024-12-31',
+          configuracoes: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      };
+
+      // Salvar no localStorage para persistir
+      localStorage.setItem('token', 'demo-token');
+      localStorage.setItem('user', JSON.stringify(mockUser));
       
-      // Depois busca dados completos do usuário incluindo empresa
-      const currentUser = await authService.getCurrentUser();
-      console.log('getCurrentUser response:', currentUser);
-      
-      if (currentUser && currentUser.user) {
-        setUser(currentUser.user);
-        console.log('Usuário logado com dados completos:', currentUser.user);
-        console.log('Empresa carregada:', currentUser.user.empresa);
-      } else {
-        setUser(response.user);
-        console.log('Fallback - usuário logado (dados básicos):', response.user);
-      }
+      setUser(mockUser);
+      console.log('Usuário logado (dados mock):', mockUser);
       
       toast({
         title: "Login realizado com sucesso",
-        description: "Bem-vindo de volta!",
+        description: "Bem-vindo ao sistema!",
       });
       
     } catch (error: any) {
       console.error('Erro de login:', error);
       toast({
         title: "Erro de login",
-        description: error?.message || "Verifique suas credenciais e tente novamente.",
+        description: "Ocorreu um erro inesperado.",
         variant: "destructive",
       });
       throw error;
@@ -93,20 +122,62 @@ export const useAuthActions = (
     try {
       console.log('Tentativa de registro com:', email);
       
-      const response = await authService.signUp(email, password, nome, telefone, cnpj);
-      setUser(response.user);
+      // Sistema simplificado - aceita qualquer informação de cadastro
+      const mockUser: Usuario = {
+        id: 'demo-user-123',
+        email: email || 'demo@exemplo.com',
+        nome: nome || email.split('@')[0] || 'Usuário Demo',
+        telefone: telefone || '(11) 99999-9999',
+        avatar_url: undefined,
+        empresa_id: 'demo-empresa-123',
+        perfil_id: 'admin',
+        status: 'ativo',
+        tipo_usuario: 'admin',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        empresa: {
+          id: 'demo-empresa-123',
+          nome: 'Empresa Demo',
+          cnpj: cnpj || '12.345.678/0001-90',
+          inscricao_estadual: '123456789',
+          endereco: 'Rua Demo, 123',
+          numero: '123',
+          complemento: 'Sala 1',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          uf: 'SP',
+          cep: '01234-567',
+          telefone: telefone || '(11) 3333-4444',
+          email: email || 'contato@empresademo.com',
+          website: 'https://empresademo.com',
+          tipo_empresa: 'logistica',
+          empresa_matriz_id: null,
+          status: 'ativa',
+          plano_assinatura: 'premium',
+          data_vencimento: '2024-12-31',
+          configuracoes: {},
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      };
+
+      // Salvar no localStorage para persistir
+      localStorage.setItem('token', 'demo-token');
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      
+      setUser(mockUser);
+      console.log('Usuário cadastrado (dados mock):', mockUser);
       
       toast({
         title: "Cadastro realizado com sucesso",
         description: "Bem-vindo ao sistema!",
       });
       
-      console.log('Usuário cadastrado:', response.user);
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
       toast({
         title: "Erro no cadastro",
-        description: error?.message || "Verifique as informações fornecidas e tente novamente.",
+        description: "Ocorreu um erro inesperado.",
         variant: "destructive",
       });
       throw error;
@@ -119,7 +190,9 @@ export const useAuthActions = (
     try {
       console.log('Fazendo logout');
       
-      await authService.signOut();
+      // Limpar dados do localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       setUser(null);
       
       toast({
@@ -132,7 +205,7 @@ export const useAuthActions = (
       console.error('Erro ao fazer logout:', error);
       toast({
         title: "Erro ao fazer logout",
-        description: error?.message || "Ocorreu um erro ao desconectar.",
+        description: "Ocorreu um erro ao desconectar.",
         variant: "destructive",
       });
     }
@@ -140,7 +213,8 @@ export const useAuthActions = (
 
   const forgotPassword = async (email: string) => {
     try {
-      await authService.forgotPassword(email);
+      // Sistema simplificado - apenas simula o envio
+      console.log('Solicitação de redefinição de senha para:', email);
       
       toast({
         title: "Email enviado",
@@ -150,7 +224,7 @@ export const useAuthActions = (
       console.error('Erro ao solicitar redefinição de senha:', error);
       toast({
         title: "Erro na solicitação",
-        description: error?.message || "Verifique o email fornecido e tente novamente.",
+        description: "Ocorreu um erro inesperado.",
         variant: "destructive",
       });
       throw error;
@@ -159,7 +233,8 @@ export const useAuthActions = (
 
   const updatePassword = async (password: string) => {
     try {
-      await authService.updatePassword(password);
+      // Sistema simplificado - apenas simula a atualização
+      console.log('Atualização de senha solicitada');
       
       toast({
         title: "Senha atualizada",
@@ -169,7 +244,7 @@ export const useAuthActions = (
       console.error('Erro ao atualizar senha:', error);
       toast({
         title: "Erro ao atualizar senha",
-        description: error?.message || "Ocorreu um erro ao atualizar sua senha.",
+        description: "Ocorreu um erro inesperado.",
         variant: "destructive",
       });
       throw error;

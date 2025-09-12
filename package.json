@@ -4,9 +4,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev:server": "tsx server/index.ts",
+    "dev:server": "tsx server/minimal-server.ts",
     "dev:client": "vite --host 0.0.0.0 --port 8080",
-    "dev": "tsx server/index.ts",
+    "dev": "tsx server/minimal-server.ts",
     "build": "vite build"
   },
   "dependencies": {

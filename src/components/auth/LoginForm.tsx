@@ -32,18 +32,12 @@ export const LoginForm = ({ onForgotPassword, setError, setSuccess }: LoginFormP
       console.log('Submitting login form with email:', data.email);
       await signIn(data.email, data.password);
       console.log('Sign in completed successfully');
+      setSuccess('Login realizado com sucesso!');
       // Navigation will be handled by the auth redirects in AuthPage
     } catch (error: any) {
       console.error('Login error:', error);
-      
-      // Exibir mensagens de erro específicas
-      if (error.message.includes('Email não confirmado')) {
-        setError("Seu email ainda não foi confirmado. Por favor, verifique sua caixa de entrada e clique no link de confirmação.");
-      } else if (error.message.includes('Credenciais inválidas')) {
-        setError("Email ou senha incorretos. Por favor, verifique e tente novamente.");
-      } else {
-        setError(error?.message || 'Ocorreu um erro durante o login. Verifique suas credenciais.');
-      }
+      // Sistema simplificado - sempre permite login, mas mostra erro genérico se algo der errado
+      setError('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -56,8 +50,8 @@ export const LoginForm = ({ onForgotPassword, setError, setSuccess }: LoginFormP
         <Input
           id="email"
           type="email"
-          placeholder="seu@email.com"
-          {...register('email', { required: "Email é obrigatório" })}
+          placeholder="Digite qualquer email"
+          {...register('email', { required: false })}
         />
         {errors.email && (
           <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -68,7 +62,8 @@ export const LoginForm = ({ onForgotPassword, setError, setSuccess }: LoginFormP
         <Input
           id="password"
           type="password"
-          {...register('password', { required: "Senha é obrigatória" })}
+          placeholder="Digite qualquer senha"
+          {...register('password', { required: false })}
         />
         {errors.password && (
           <p className="text-sm text-red-500">{errors.password.message}</p>

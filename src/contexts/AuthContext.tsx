@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext } from 'react';
-import { Usuario } from "@/types/supabase.types";
+import { Usuario } from "../types/supabase.types";
 
 interface CustomSession {
   access_token: string;

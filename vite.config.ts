@@ -11,7 +11,13 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 8080,
-    allowedHosts: "all", // Permite todos os hosts do Replit
+    allowedHosts: [
+      "localhost",
+      "127.0.0.1",
+      "d7b15c31-81fe-4823-bdd9-7694ae6b8d2c-00-ochrue1p6370.riker.replit.dev",
+      ".replit.dev",
+      ".repl.co"
+    ],
   },
   resolve: {
     alias: {
