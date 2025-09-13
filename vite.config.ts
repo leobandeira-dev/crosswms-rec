@@ -11,9 +11,21 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 8080,
-    allowedHosts: "all",
+    allowedHosts: [
+      "all",
+      "d7b15c31-81fe-4823-bdd9-7694ae6b8d2c-00-ochrue1p6370.riker.replit.dev",
+      "localhost",
+      "127.0.0.1"
+    ],
     hmr: {
       clientPort: 443
+    },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false
+      }
     }
   },
   resolve: {

@@ -1494,8 +1494,10 @@ useEffect(() => {
         alert('XML obtido via NSDocs API e processado automaticamente com sucesso!');
       } else {
         // Handle different error types
-        if (result.requires_api_key) {
-          alert(`Configuração necessária: ${result.error}\n\n${result.setup_instructions || 'Configure a chave de API do NSDocs nas variáveis de ambiente.'}`);
+        if (result.requires_api_key || result.source === 'nsdocs_config_missing') {
+          console.log('[Frontend] NSDocs não configurado, usando Logística da Informação como fallback');
+          // Usar Logística da Informação como fallback
+          return await fetchXmlWithLogisticaInfo();
         } else if (result.nfe_not_found) {
           alert('NFe não encontrada na base de dados do NSDocs. Verifique se a chave está correta ou tente com outra NFe.');
         } else if (result.api_error) {

@@ -1761,19 +1761,11 @@ export function registerRoutes(app: Express): Server {
 
       console.log(`[API] Tentativa de busca NFe: ${chaveNotaFiscal}`);
       
-      // Verificar credenciais
-      const cnpj = process.env.LOGISTICA_CNPJ;
-      const token = process.env.LOGISTICA_INFORMACAO_TOKEN;
+      // Usar credenciais fornecidas
+      const cnpj = process.env.LOGISTICA_CNPJ || '34579341000185';
+      const token = process.env.LOGISTICA_INFORMACAO_TOKEN || '5K7WUNCGES1GNIP6DW65JAIW54H111';
       
-      if (!cnpj || !token) {
-        console.log('[API] Credenciais da Logística da Informação não encontradas');
-        return res.json({
-          success: false,
-          error: 'Serviço temporariamente indisponível. Aguardando configuração do token de acesso.',
-          api_error: true,
-          source: 'logistica_config_missing'
-        });
-      }
+      console.log(`[API] Usando credenciais Logística: CNPJ ${cnpj.substring(0, 8)}...`);
 
       // Importar e usar o serviço
       const { LogisticaInformacaoService } = await import('./logistica-informacao-service');
@@ -1786,6 +1778,102 @@ export function registerRoutes(app: Express): Server {
 
     } catch (error: any) {
       console.error('[API] Erro no endpoint fetch-from-logistica:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Erro interno do servidor',
+        api_error: true
+      });
+    }
+  });
+
+  // XML API Routes - NSDocs
+  app.post("/api/xml/fetch-from-nsdocs", async (req, res) => {
+    try {
+      const { chaveNotaFiscal } = req.body;
+      
+      if (!chaveNotaFiscal || chaveNotaFiscal.length !== 44) {
+        return res.status(400).json({
+          success: false,
+          error: 'Chave NFe inválida. Deve ter exatamente 44 dígitos.',
+          invalid_xml: true
+        });
+      }
+
+      console.log(`[API] Tentativa de busca NFe via NSDocs: ${chaveNotaFiscal}`);
+      
+      // Verificar credenciais
+      const clientId = process.env.NSDOCS_CLIENT_ID;
+      const clientSecret = process.env.NSDOCS_CLIENT_SECRET;
+      
+      if (!clientId || !clientSecret) {
+        console.log('[API] Credenciais do NSDocs não encontradas');
+        return res.json({
+          success: false,
+          error: 'Serviço temporariamente indisponível. Aguardando configuração das credenciais NSDocs.',
+          api_error: true,
+          source: 'nsdocs_config_missing'
+        });
+      }
+
+      // Importar e usar o serviço NSDocs
+      const { NSDOcsAPI } = await import('../nsdocs.api');
+      const api = new NSDOcsAPI(clientId, clientSecret);
+      
+      console.log(`[API] Fazendo consulta NFe via NSDocs...`);
+      const result = await api.fetchNFeXML(chaveNotaFiscal);
+      
+      return res.json(result);
+
+    } catch (error: any) {
+      console.error('[API] Erro no endpoint fetch-from-nsdocs:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Erro interno do servidor',
+        api_error: true
+      });
+    }
+  });
+
+  // XML API Routes - NSDocs
+  app.post("/api/xml/fetch-from-nsdocs", async (req, res) => {
+    try {
+      const { chaveNotaFiscal } = req.body;
+      
+      if (!chaveNotaFiscal || chaveNotaFiscal.length !== 44) {
+        return res.status(400).json({
+          success: false,
+          error: 'Chave NFe inválida. Deve ter exatamente 44 dígitos.',
+          invalid_xml: true
+        });
+      }
+
+      console.log(`[API] Tentativa de busca NFe via NSDocs: ${chaveNotaFiscal}`);
+      
+      // Verificar credenciais
+      const clientId = process.env.NSDOCS_CLIENT_ID;
+      const clientSecret = process.env.NSDOCS_CLIENT_SECRET;
+      
+      if (!clientId || !clientSecret) {
+        console.log('[API] Credenciais do NSDocs não encontradas');
+        return res.json({
+          success: false,
+          error: 'Serviço temporariamente indisponível. Aguardando configuração das credenciais NSDocs.',
+          api_error: true,
+          source: 'nsdocs_config_missing'
+        });
+      }
+
+      // Importar e usar o serviço NSDocs
+      const { NSDOcsAPI } = await import('../nsdocs.api');
+      const api = new NSDOcsAPI(clientId, clientSecret);
+      
+      console.log(`[API] Fazendo consulta NFe via NSDocs...`);
+      const result = await api.fetchNFeXML(chaveNotaFiscal);
+      
+      return res.json(result);
+
+    } catch (error: any) {
+      console.error('[API] Erro no endpoint fetch-from-nsdocs:', error);
       res.status(500).json({
         success: false,
         error: 'Erro interno do servidor',
