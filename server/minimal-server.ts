@@ -1,7 +1,7 @@
 import express from "express";
 
 const app = express();
-const port = process.env.PORT || 8080;
+const port = 3001; // Porta fixa para o backend
 
 // Middleware básico
 app.use(express.json());

@@ -44,6 +44,8 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.44.5",
+    "drizzle-kit": "^0.20.14",
+    "postgres": "^3.4.3",
     "express": "^4.21.2",
     "html2canvas": "^1.4.1",
     "jsbarcode": "^3.12.1",
