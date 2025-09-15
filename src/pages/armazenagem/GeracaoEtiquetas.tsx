@@ -1172,7 +1172,7 @@ const GeracaoEtiquetas = () => {
     
     // Client logo detection - check logged user's company
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-    const userCompany = currentUser?.empresa || volume.transportadora || 'Transportadora não especificada'
+    const userCompany = String(currentUser?.empresa || volume.transportadora || 'Transportadora não especificada')
     
     let transportadoraText = userCompany
     
@@ -1522,7 +1522,7 @@ const GeracaoEtiquetas = () => {
     
     // Client logo detection for A4 format
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-    const userCompany = currentUser?.empresa || volume.transportadora || 'Transportadora não especificada'
+    const userCompany = String(currentUser?.empresa || volume.transportadora || 'Transportadora não especificada')
     
     let transportadoraText = userCompany
     
@@ -2598,7 +2598,7 @@ const GeracaoEtiquetas = () => {
                         <div className="mt-2 text-center py-2 mb-3" style={{ marginTop: '2mm' }}>
                           {(() => {
                             const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-                            const userCompany = currentUser?.empresa || 'Transportadora não especificada'
+                            const userCompany = String(currentUser?.empresa || 'Transportadora não especificada')
                             
                             if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada')) {
                               return <TransulLogo className="mx-auto" width={160} height={45} />
@@ -2747,7 +2747,7 @@ const GeracaoEtiquetas = () => {
                         <div className="mt-2 flex justify-between items-center pb-2 mb-3" style={{ marginTop: '2mm' }}>
                           {(() => {
                             const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-                            const userCompany = currentUser?.empresa || 'Transportadora não especificada'
+                            const userCompany = String(currentUser?.empresa || 'Transportadora não especificada')
                             
                             if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada')) {
                               return <TransulLogo className="mx-auto" width={160} height={45} />
