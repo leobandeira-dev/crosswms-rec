@@ -1237,9 +1237,9 @@ const GeracaoEtiquetas = () => {
     
     let transportadoraText = userCompany
     
-    // Check for specific clients with logos
-    if ((typeof userCompany === 'string' && userCompany.toLowerCase().includes('transul')) || userCompany.includes('Transportadora não especificada')) {
-      transportadoraText = 'TRANSUL TRANSPORTE'
+    // Check for specific clients with logos - Default to Transul if no specific company
+    if ((typeof userCompany === 'string' && userCompany.toLowerCase().includes('transul')) || userCompany.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
+      transportadoraText = 'Transul Transporte'
       
       // Create framed and centered Transul logo in PDF header
       pdf.setFillColor(0, 0, 0)
@@ -1587,9 +1587,9 @@ const GeracaoEtiquetas = () => {
     
     let transportadoraText = userCompany
     
-    // Check for specific clients with logos
-    if ((typeof userCompany === 'string' && userCompany.toLowerCase().includes('transul')) || transportadoraText.includes('Transportadora não especificada')) {
-      transportadoraText = 'TRANSUL TRANSPORTE'
+    // Check for specific clients with logos - Default to Transul if no specific company  
+    if ((typeof userCompany === 'string' && userCompany.toLowerCase().includes('transul')) || transportadoraText.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
+      transportadoraText = 'Transul Transporte'
       
       // Create framed and centered Transul logo in A4 PDF header
       pdf.setFillColor(0, 0, 0)
@@ -1879,8 +1879,8 @@ const GeracaoEtiquetas = () => {
     const userCompanyA4 = String(currentUserA4?.empresa || volume.transportadora || 'Transportadora não especificada')
     
     let transportadoraTextA4 = userCompanyA4
-    if ((typeof userCompanyA4 === 'string' && userCompanyA4.toLowerCase().includes('transul')) || transportadoraTextA4.includes('Transportadora não especificada')) {
-      transportadoraTextA4 = 'TRANSUL TRANSPORTE'
+    if ((typeof userCompanyA4 === 'string' && userCompanyA4.toLowerCase().includes('transul')) || transportadoraTextA4.includes('Transportadora não especificada') || !userCompanyA4 || userCompanyA4 === 'demo-empresa-123') {
+      transportadoraTextA4 = 'Transul Transporte'
     } else if (typeof userCompanyA4 === 'string' && userCompanyA4.toLowerCase().includes('cross')) {
       transportadoraTextA4 = 'CROSS LOGISTICS'
     }
@@ -2661,7 +2661,7 @@ const GeracaoEtiquetas = () => {
                             const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
                             const userCompany = String(currentUser?.empresa || 'Transportadora não especificada')
                             
-                            if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada')) {
+                            if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
                               return <TransulLogo className="mx-auto" width={160} height={45} />
                             } else if (userCompany.toLowerCase().includes('cross')) {
                               return <h3 className="font-bold text-lg">CROSS LOGISTICS</h3>
@@ -2810,7 +2810,7 @@ const GeracaoEtiquetas = () => {
                             const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
                             const userCompany = String(currentUser?.empresa || 'Transportadora não especificada')
                             
-                            if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada')) {
+                            if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
                               return <TransulLogo className="mx-auto" width={160} height={45} />
                             } else if (userCompany.toLowerCase().includes('cross')) {
                               return <h3 className="font-bold text-center w-full">CROSS LOGISTICS</h3>
