@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "./db";
-import { volumes_etiqueta, notas_fiscais } from "../shared/schema";
+import { volumes_etiqueta, notas_fiscais, ordens_carga, itens_carga } from "../shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
@@ -9,9 +9,13 @@ export function registerVolumesRoutes(app: any) {
   // Salvar nota fiscal no banco e retornar ID único
   app.post('/api/notas-fiscais', async (req: Request, res: Response) => {
     try {
-      const notaFiscal = req.body;
+      const { ordem_carga_id, ...notaFiscal } = req.body;
       
-      console.log('Salvando nota fiscal:', { chave: notaFiscal.chave_nota_fiscal, numero: notaFiscal.numero_nota });
+      console.log('Salvando nota fiscal:', { 
+        chave: notaFiscal.chave_nota_fiscal, 
+        numero: notaFiscal.numero_nota,
+        ordem_carga_id 
+      });
 
       // Usar a chave da nota fiscal como ID único (permite múltiplas passagens)
       const notaFiscalId = uuidv4();
@@ -40,10 +44,31 @@ export function registerVolumesRoutes(app: any) {
       } catch (dbError) {
         console.log('Nota fiscal já existe ou erro na inserção, usando ID gerado:', dbError);
       }
+
+      // Se ordem_carga_id foi fornecido, criar vínculo na tabela itens_carga
+      if (ordem_carga_id) {
+        try {
+          await db.insert(itens_carga).values({
+            id: uuidv4(),
+            ordem_carga_id: ordem_carga_id,
+            nota_fiscal_id: notaFiscalId,
+            descricao: `NF ${notaFiscal.numero_nota || notaFiscal.numero_nf || 'S/N'}`,
+            quantidade: parseInt(notaFiscal.quantidade_volumes?.toString() || '1'),
+            peso: parseFloat(notaFiscal.peso_bruto?.toString() || '0'),
+            volume: parseFloat(notaFiscal.quantidade_volumes?.toString() || '1'),
+            created_at: new Date()
+          });
+          console.log('Vínculo criado entre ordem de carga e nota fiscal:', { ordem_carga_id, notaFiscalId });
+        } catch (linkError) {
+          console.error('Erro ao criar vínculo com ordem de carga:', linkError);
+          // Não falhar o processo principal por causa do vínculo
+        }
+      }
       
       res.json({ 
         success: true, 
         id: notaFiscalId, 
+        ordem_carga_id: ordem_carga_id || null,
         message: 'Nota fiscal processada com sucesso'
       });
     } catch (error) {
@@ -556,5 +581,128 @@ export function registerVolumesRoutes(app: any) {
     }
   });
 
+  // Criar ordem de carga
+  app.post('/api/ordens-carga', async (req: Request, res: Response) => {
+    try {
+      const ordemData = req.body;
+      
+      console.log('Criando ordem de carga:', ordemData);
 
+      // Validar dados obrigatórios
+      if (!ordemData.numero_ordem || !ordemData.tipo_carregamento || !ordemData.empresa_cliente_id || !ordemData.usuario_responsavel_id) {
+        return res.status(400).json({ 
+          error: 'Campos obrigatórios: numero_ordem, tipo_carregamento, empresa_cliente_id, usuario_responsavel_id' 
+        });
+      }
+
+      const ordemCargaId = uuidv4();
+
+      const resultado = await db.insert(ordens_carga).values({
+        id: ordemCargaId,
+        numero_ordem: ordemData.numero_ordem,
+        tipo_carregamento: ordemData.tipo_carregamento,
+        empresa_cliente_id: ordemData.empresa_cliente_id,
+        motorista_id: ordemData.motorista_id,
+        veiculo_id: ordemData.veiculo_id,
+        data_prevista: ordemData.data_prevista ? new Date(ordemData.data_prevista) : new Date(),
+        status: ordemData.status || 'planejada',
+        observacoes: ordemData.observacoes,
+        usuario_responsavel_id: ordemData.usuario_responsavel_id,
+        created_at: new Date(),
+        updated_at: new Date()
+      }).returning();
+
+      console.log('Ordem de carga criada com sucesso:', ordemCargaId);
+
+      res.json({ 
+        success: true, 
+        id: ordemCargaId, 
+        ordem: resultado[0],
+        message: 'Ordem de carga criada com sucesso'
+      });
+    } catch (error) {
+      console.error('Erro ao criar ordem de carga:', error);
+      res.status(500).json({ error: 'Erro ao criar ordem de carga' });
+    }
+  });
+
+  // Listar ordens de carga
+  app.get('/api/ordens-carga', async (req: Request, res: Response) => {
+    try {
+      const { empresa_cliente_id, status } = req.query;
+      
+      // Construir query com condições
+      let whereConditions = [];
+      
+      if (empresa_cliente_id) {
+        whereConditions.push(eq(ordens_carga.empresa_cliente_id, empresa_cliente_id as string));
+      }
+      
+      if (status) {
+        whereConditions.push(eq(ordens_carga.status, status as string));
+      }
+
+      let ordens;
+      if (whereConditions.length > 0) {
+        // Se há condições, usar SQL direto para simplificar
+        ordens = await db.execute(sql`
+          SELECT * FROM ordens_carga 
+          WHERE ${empresa_cliente_id ? sql`empresa_cliente_id = ${empresa_cliente_id}` : sql`1=1`}
+          ${status ? sql`AND status = ${status}` : sql``}
+          ORDER BY created_at DESC
+        `);
+      } else {
+        ordens = await db.select().from(ordens_carga).orderBy(ordens_carga.created_at);
+      }
+
+      res.json({ 
+        success: true, 
+        ordens: ordens 
+      });
+    } catch (error) {
+      console.error('Erro ao buscar ordens de carga:', error);
+      res.status(500).json({ error: 'Erro ao buscar ordens de carga' });
+    }
+  });
+
+  // Buscar ordem de carga por ID
+  app.get('/api/ordens-carga/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      const ordem = await db.select()
+        .from(ordens_carga)
+        .where(eq(ordens_carga.id, id))
+        .limit(1);
+
+      if (ordem.length === 0) {
+        return res.status(404).json({ error: 'Ordem de carga não encontrada' });
+      }
+
+      // Buscar itens da carga (notas fiscais vinculadas)
+      const itens = await db.select({
+        id: itens_carga.id,
+        ordem_carga_id: itens_carga.ordem_carga_id,
+        nota_fiscal_id: itens_carga.nota_fiscal_id,
+        descricao: itens_carga.descricao,
+        quantidade: itens_carga.quantidade,
+        peso: itens_carga.peso,
+        volume: itens_carga.volume,
+        nota_numero: notas_fiscais.numero,
+        nota_chave: notas_fiscais.chave_acesso
+      })
+      .from(itens_carga)
+      .leftJoin(notas_fiscais, eq(itens_carga.nota_fiscal_id, notas_fiscais.id))
+      .where(eq(itens_carga.ordem_carga_id, id));
+
+      res.json({ 
+        success: true, 
+        ordem: ordem[0],
+        itens: itens
+      });
+    } catch (error) {
+      console.error('Erro ao buscar ordem de carga:', error);
+      res.status(500).json({ error: 'Erro ao buscar ordem de carga' });
+    }
+  });
 }
