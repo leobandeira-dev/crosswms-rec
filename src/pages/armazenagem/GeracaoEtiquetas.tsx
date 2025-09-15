@@ -2768,7 +2768,15 @@ const GeracaoEtiquetas = () => {
                             <div className="text-sm">
                               Transportadora: {(() => {
                                 const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-                                return currentUser?.empresa || 'Transportadora não especificada'
+                                const userCompany = String(currentUser?.empresa || 'Transportadora não especificada')
+                                
+                                if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
+                                  return 'Transul Transporte'
+                                } else if (userCompany.toLowerCase().includes('cross')) {
+                                  return 'CROSS LOGISTICS'
+                                } else {
+                                  return userCompany
+                                }
                               })()}
                             </div>
                             
@@ -2912,7 +2920,15 @@ const GeracaoEtiquetas = () => {
                             <div>
                               <strong>Transportadora:</strong> {(() => {
                                 const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-                                return currentUser?.empresa || 'Transportadora não especificada'
+                                const userCompany = String(currentUser?.empresa || 'Transportadora não especificada')
+                                
+                                if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
+                                  return 'Transul Transporte'
+                                } else if (userCompany.toLowerCase().includes('cross')) {
+                                  return 'CROSS LOGISTICS'
+                                } else {
+                                  return userCompany
+                                }
                               })()}
                             </div>
                             
