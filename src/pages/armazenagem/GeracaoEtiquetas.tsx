@@ -943,116 +943,177 @@ const GeracaoEtiquetas = () => {
   // Generate PDF for selected volumes
   const generateLabelPDF = async (volumes: any[], action: 'download' | 'print') => {
     try {
+      // Validate input parameters
+      if (!volumes || volumes.length === 0) {
+        throw new Error('Nenhum volume fornecido para gerar PDF')
+      }
+
+      if (!action || !['download', 'print'].includes(action)) {
+        throw new Error('Ação inválida para geração de PDF')
+      }
+
       toast.info(`${action === 'download' ? 'Gerando PDF' : 'Preparando para impressão'}...`)
+      
+      // Validate format selection
+      const format = selectedFormato === '50x100mm' ? [50, 100] : 
+                     selectedFormato === '100x150mm' ? [100, 150] : 'a4'
       
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: selectedFormato === '50x100mm' ? [50, 100] : 
-                selectedFormato === '100x150mm' ? [100, 150] : 'a4'
+        format: format
       })
 
       let isFirstPage = true
 
       for (const volume of volumes) {
+        // Validate volume data
+        if (!volume || !volume.notaFiscal || !volume.volume) {
+          console.warn('Volume com dados incompletos ignorado:', volume)
+          continue
+        }
+
         if (!isFirstPage) {
           pdf.addPage()
         }
         isFirstPage = false
 
-        // Generate QR Code for this volume
-        const qrData = `${volume.notaFiscal}-${volume.volume.split('/')[0]}-${new Date().toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: '2-digit'
-        }).replace(/\//g, '')}-${new Date().toLocaleTimeString('pt-BR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        }).replace(':', '')}`
-        
-        const qrCodeDataURL = await QRCode.toDataURL(qrData, {
-          width: 64,
-          margin: 1,
-          color: { dark: '#000000', light: '#FFFFFF' }
-        })
+        try {
+          // Generate QR Code for this volume with better error handling
+          const volumePart = volume.volume ? volume.volume.split('/')[0] : '1'
+          const qrData = `${volume.notaFiscal}-${volumePart}-${new Date().toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit'
+          }).replace(/\//g, '')}-${new Date().toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }).replace(':', '')}`
+          
+          const qrCodeDataURL = await QRCode.toDataURL(qrData, {
+            width: 64,
+            margin: 1,
+            color: { dark: '#000000', light: '#FFFFFF' }
+          })
 
-        // Add content to PDF using the selected layout
-        if (selectedLayout === 'alta-legibilidade-contraste') {
-          await addAltaLegibilidadeContrasteToPDF(pdf, volume, qrCodeDataURL)
-        } else {
-          await addA4LabelToPDF(pdf, volume, qrCodeDataURL)
+          // Add content to PDF using the selected layout with error handling
+          if (selectedLayout === 'alta-legibilidade-contraste') {
+            await addAltaLegibilidadeContrasteToPDF(pdf, volume, qrCodeDataURL)
+          } else {
+            await addA4LabelToPDF(pdf, volume, qrCodeDataURL)
+          }
+        } catch (volumeError) {
+          console.error(`Erro ao processar volume ${volume.codigo}:`, volumeError)
+          // Continue processing other volumes instead of failing completely
+          continue
         }
       }
 
-      const fileName = `etiquetas_NF_${notaFiscal}_${new Date().toISOString().slice(0, 10)}.pdf`
+      // Generate filename with fallback
+      const nfNumber = notaFiscal || notaFiscalData?.numero_nota || 'etiqueta'
+      const fileName = `etiquetas_NF_${nfNumber}_${new Date().toISOString().slice(0, 10)}.pdf`
       
       if (action === 'download') {
-        pdf.save(fileName)
-        toast.success('PDF das etiquetas baixado com sucesso')
+        try {
+          pdf.save(fileName)
+          toast.success('PDF das etiquetas baixado com sucesso')
+        } catch (downloadError) {
+          console.error('Erro ao fazer download do PDF:', downloadError)
+          throw new Error('Falha ao fazer download do PDF')
+        }
       } else {
         // For printing, generate multiple labels based on quantity
-        const quantidadeVolumes = notaFiscalData?.quantidade_volumes || 1
-        const printPdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: selectedFormato === '50x100mm' ? [50, 100] : 
-                  selectedFormato === '100x150mm' ? [100, 150] : 'a4'
-        })
-
-        let printFirstPage = true
-        let totalLabels = 0
-
-        // Generate individual labels for each volume with proper numbering
-        for (const volume of volumes) {
-          for (let i = 1; i <= quantidadeVolumes; i++) {
-            if (!printFirstPage) {
-              printPdf.addPage()
-            }
-            printFirstPage = false
-            totalLabels++
-
-            // Create volume data with dynamic numbering
-            const volumeData = {
-              ...volume,
-              volume: `${i}/${quantidadeVolumes}`,
-              codigo: `${volume.codigo}-${String(i).padStart(3, '0')}`
-            }
-
-            // Generate QR code for this specific label
-            const labelQrData = `${volume.notaFiscal}-${volumeData.codigo}-${new Date().toLocaleDateString('pt-BR').replace(/\//g, '')}`
-            const labelQrCodeDataURL = await QRCode.toDataURL(labelQrData, {
-              width: 64,
-              margin: 1,
-              color: { dark: '#000000', light: '#FFFFFF' }
-            })
-
-            // Add label using the selected layout
-            if (selectedLayout === 'alta-legibilidade-contraste') {
-              await addAltaLegibilidadeContrasteToPDF(printPdf, volumeData, labelQrCodeDataURL)
-            } else {
-              await addA4LabelToPDF(printPdf, volumeData, labelQrCodeDataURL)
-            }
-          }
-        }
-
-        // Open print dialog in new window
-        const pdfBlob = printPdf.output('blob')
-        const url = URL.createObjectURL(pdfBlob)
-        const printWindow = window.open(url, '_blank')
+        const quantidadeVolumes = parseInt(notaFiscalData?.quantidade_volumes?.toString() || '1')
         
-        if (printWindow) {
-          printWindow.onload = () => {
-            printWindow.print()
-            // Clean up URL after printing
-            setTimeout(() => URL.revokeObjectURL(url), 1000)
-          }
-        }
+        try {
+          const printPdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: format
+          })
 
-        toast.success(`${totalLabels} etiquetas preparadas para impressão`)
+          let printFirstPage = true
+          let totalLabels = 0
+
+          // Generate individual labels for each volume with proper numbering
+          for (const volume of volumes) {
+            if (!volume || !volume.notaFiscal) {
+              console.warn('Volume inválido ignorado na impressão:', volume)
+              continue
+            }
+
+            for (let i = 1; i <= quantidadeVolumes; i++) {
+              if (!printFirstPage) {
+                printPdf.addPage()
+              }
+              printFirstPage = false
+              totalLabels++
+
+              try {
+                // Create volume data with dynamic numbering
+                const volumeData = {
+                  ...volume,
+                  volume: `${i}/${quantidadeVolumes}`,
+                  codigo: `${volume.codigo}-${String(i).padStart(3, '0')}`
+                }
+
+                // Generate QR code for this specific label
+                const labelQrData = `${volume.notaFiscal}-${volumeData.codigo}-${new Date().toLocaleDateString('pt-BR').replace(/\//g, '')}`
+                const labelQrCodeDataURL = await QRCode.toDataURL(labelQrData, {
+                  width: 64,
+                  margin: 1,
+                  color: { dark: '#000000', light: '#FFFFFF' }
+                })
+
+                // Add label using the selected layout
+                if (selectedLayout === 'alta-legibilidade-contraste') {
+                  await addAltaLegibilidadeContrasteToPDF(printPdf, volumeData, labelQrCodeDataURL)
+                } else {
+                  await addA4LabelToPDF(printPdf, volumeData, labelQrCodeDataURL)
+                }
+              } catch (labelError) {
+                console.error(`Erro ao gerar etiqueta ${i} do volume ${volume.codigo}:`, labelError)
+                // Continue with next label instead of failing completely
+                continue
+              }
+            }
+          }
+
+          if (totalLabels === 0) {
+            throw new Error('Nenhuma etiqueta válida foi gerada para impressão')
+          }
+
+          // Open print dialog in new window
+          const pdfBlob = printPdf.output('blob')
+          const url = URL.createObjectURL(pdfBlob)
+          const printWindow = window.open(url, '_blank')
+          
+          if (printWindow) {
+            printWindow.onload = () => {
+              printWindow.print()
+              // Clean up URL after printing
+              setTimeout(() => URL.revokeObjectURL(url), 1000)
+            }
+          } else {
+            // Fallback for popup blockers
+            console.warn('Pop-up bloqueado, fazendo download do PDF para impressão')
+            const link = document.createElement('a')
+            link.href = url
+            link.download = fileName
+            link.click()
+            URL.revokeObjectURL(url)
+          }
+
+          toast.success(`${totalLabels} etiquetas preparadas para impressão`)
+        } catch (printError) {
+          console.error('Erro durante processo de impressão:', printError)
+          throw new Error(`Erro na impressão: ${printError.message}`)
+        }
       }
     } catch (error) {
       console.error('Error generating PDF:', error)
-      toast.error(`Erro ao ${action === 'download' ? 'gerar PDF' : 'imprimir'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      toast.error(`Erro ao ${action === 'download' ? 'gerar PDF' : 'imprimir'}: ${errorMessage}`)
     }
   }
 
@@ -1177,7 +1238,7 @@ const GeracaoEtiquetas = () => {
     let transportadoraText = userCompany
     
     // Check for specific clients with logos
-    if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada')) {
+    if ((typeof userCompany === 'string' && userCompany.toLowerCase().includes('transul')) || userCompany.includes('Transportadora não especificada')) {
       transportadoraText = 'TRANSUL TRANSPORTE'
       
       // Create framed and centered Transul logo in PDF header
@@ -1205,7 +1266,7 @@ const GeracaoEtiquetas = () => {
       
       currentY = margin + headerHeight + 3
       
-    } else if (userCompany.toLowerCase().includes('cross')) {
+    } else if (typeof userCompany === 'string' && userCompany.toLowerCase().includes('cross')) {
       transportadoraText = 'CROSS LOGISTICS'
       const transportadoraX = margin + ((pageWidth - (margin * 2)) / 2)
       pdf.text(transportadoraText, transportadoraX, margin + (headerHeight * 0.6), { align: 'center' })
@@ -1527,7 +1588,7 @@ const GeracaoEtiquetas = () => {
     let transportadoraText = userCompany
     
     // Check for specific clients with logos
-    if (userCompany.toLowerCase().includes('transul') || transportadoraText.includes('Transportadora não especificada')) {
+    if ((typeof userCompany === 'string' && userCompany.toLowerCase().includes('transul')) || transportadoraText.includes('Transportadora não especificada')) {
       transportadoraText = 'TRANSUL TRANSPORTE'
       
       // Create framed and centered Transul logo in A4 PDF header
@@ -1557,7 +1618,7 @@ const GeracaoEtiquetas = () => {
       // Update current Y position to start after the framed header
       currentY = margin + headerBoxHeight + 3
       
-    } else if (userCompany.toLowerCase().includes('cross')) {
+    } else if (typeof userCompany === 'string' && userCompany.toLowerCase().includes('cross')) {
       transportadoraText = 'CROSS LOGISTICS'
       pdf.setFontSize(isSmallFormat ? 9 : 14)
       pdf.setFont('helvetica', 'bold')
@@ -1815,12 +1876,12 @@ const GeracaoEtiquetas = () => {
     
     // Use same client detection logic
     const currentUserA4 = JSON.parse(localStorage.getItem('user') || '{}')
-    const userCompanyA4 = currentUserA4?.empresa || volume.transportadora || 'Transportadora não especificada'
+    const userCompanyA4 = String(currentUserA4?.empresa || volume.transportadora || 'Transportadora não especificada')
     
     let transportadoraTextA4 = userCompanyA4
-    if (userCompanyA4.toLowerCase().includes('transul') || transportadoraTextA4.includes('Transportadora não especificada')) {
+    if ((typeof userCompanyA4 === 'string' && userCompanyA4.toLowerCase().includes('transul')) || transportadoraTextA4.includes('Transportadora não especificada')) {
       transportadoraTextA4 = 'TRANSUL TRANSPORTE'
-    } else if (userCompanyA4.toLowerCase().includes('cross')) {
+    } else if (typeof userCompanyA4 === 'string' && userCompanyA4.toLowerCase().includes('cross')) {
       transportadoraTextA4 = 'CROSS LOGISTICS'
     }
     
