@@ -1213,6 +1213,15 @@ const GeracaoEtiquetas = () => {
 
 
 
+  // Helper function to normalize company names - always returns a string
+  const getCompanyName = (v: any): string => {
+    if (typeof v === 'string') return v.trim()
+    if (v && typeof v === 'object') {
+      return (v.razao_social || v.nome_fantasia || v.name || v.empresa || 'Transul Transporte').toString().trim()
+    }
+    return 'Transul Transporte'
+  }
+
   // High-contrast label PDF function for "Alta Legibilidade Contraste" layout
   const addAltaLegibilidadeContrasteToPDF = async (pdf: jsPDF, volume: any, qrCodeDataURL: string) => {
     const pageWidth = pdf.internal.pageSize.getWidth()
@@ -1233,12 +1242,12 @@ const GeracaoEtiquetas = () => {
     
     // Client logo detection - check logged user's company
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-    const userCompany = String(currentUser?.empresa || volume.transportadora || 'Transportadora não especificada')
+    const userCompany = getCompanyName(currentUser?.empresa || volume.transportadora || 'Transportadora não especificada')
     
     let transportadoraText = userCompany
     
     // Check for specific clients with logos - Default to Transul if no specific company
-    if ((typeof userCompany === 'string' && userCompany.toLowerCase().includes('transul')) || userCompany.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
+    if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
       transportadoraText = 'Transul Transporte'
       
       // Create framed and centered Transul logo in PDF header
@@ -1266,7 +1275,7 @@ const GeracaoEtiquetas = () => {
       
       currentY = margin + headerHeight + 3
       
-    } else if (typeof userCompany === 'string' && userCompany.toLowerCase().includes('cross')) {
+    } else if (userCompany.toLowerCase().includes('cross')) {
       transportadoraText = 'CROSS LOGISTICS'
       const transportadoraX = margin + ((pageWidth - (margin * 2)) / 2)
       pdf.text(transportadoraText, transportadoraX, margin + (headerHeight * 0.6), { align: 'center' })
@@ -1583,12 +1592,12 @@ const GeracaoEtiquetas = () => {
     
     // Client logo detection for A4 format
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-    const userCompany = String(currentUser?.empresa || volume.transportadora || 'Transportadora não especificada')
+    const userCompany = getCompanyName(currentUser?.empresa || volume.transportadora || 'Transportadora não especificada')
     
     let transportadoraText = userCompany
     
     // Check for specific clients with logos - Default to Transul if no specific company  
-    if ((typeof userCompany === 'string' && userCompany.toLowerCase().includes('transul')) || transportadoraText.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
+    if (userCompany.toLowerCase().includes('transul') || transportadoraText.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
       transportadoraText = 'Transul Transporte'
       
       // Create framed and centered Transul logo in A4 PDF header
@@ -1618,7 +1627,7 @@ const GeracaoEtiquetas = () => {
       // Update current Y position to start after the framed header
       currentY = margin + headerBoxHeight + 3
       
-    } else if (typeof userCompany === 'string' && userCompany.toLowerCase().includes('cross')) {
+    } else if (userCompany.toLowerCase().includes('cross')) {
       transportadoraText = 'CROSS LOGISTICS'
       pdf.setFontSize(isSmallFormat ? 9 : 14)
       pdf.setFont('helvetica', 'bold')
@@ -1876,12 +1885,12 @@ const GeracaoEtiquetas = () => {
     
     // Use same client detection logic
     const currentUserA4 = JSON.parse(localStorage.getItem('user') || '{}')
-    const userCompanyA4 = String(currentUserA4?.empresa || volume.transportadora || 'Transportadora não especificada')
+    const userCompanyA4 = getCompanyName(currentUserA4?.empresa || volume.transportadora || 'Transportadora não especificada')
     
     let transportadoraTextA4 = userCompanyA4
-    if ((typeof userCompanyA4 === 'string' && userCompanyA4.toLowerCase().includes('transul')) || transportadoraTextA4.includes('Transportadora não especificada') || !userCompanyA4 || userCompanyA4 === 'demo-empresa-123') {
+    if (userCompanyA4.toLowerCase().includes('transul') || transportadoraTextA4.includes('Transportadora não especificada') || !userCompanyA4 || userCompanyA4 === 'demo-empresa-123') {
       transportadoraTextA4 = 'Transul Transporte'
-    } else if (typeof userCompanyA4 === 'string' && userCompanyA4.toLowerCase().includes('cross')) {
+    } else if (userCompanyA4.toLowerCase().includes('cross')) {
       transportadoraTextA4 = 'CROSS LOGISTICS'
     }
     
@@ -2659,7 +2668,7 @@ const GeracaoEtiquetas = () => {
                         <div className="mt-2 text-center py-2 mb-3" style={{ marginTop: '2mm' }}>
                           {(() => {
                             const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-                            const userCompany = String(currentUser?.empresa || 'Transportadora não especificada')
+                            const userCompany = getCompanyName(currentUser?.empresa || 'Transportadora não especificada')
                             
                             if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
                               return <TransulLogo className="mx-auto" width={160} height={45} />
@@ -2768,7 +2777,7 @@ const GeracaoEtiquetas = () => {
                             <div className="text-sm">
                               Transportadora: {(() => {
                                 const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-                                const userCompany = String(currentUser?.empresa || 'Transportadora não especificada')
+                                const userCompany = getCompanyName(currentUser?.empresa || 'Transportadora não especificada')
                                 
                                 if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
                                   return 'Transul Transporte'
@@ -2816,7 +2825,7 @@ const GeracaoEtiquetas = () => {
                         <div className="mt-2 flex justify-between items-center pb-2 mb-3" style={{ marginTop: '2mm' }}>
                           {(() => {
                             const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-                            const userCompany = String(currentUser?.empresa || 'Transportadora não especificada')
+                            const userCompany = getCompanyName(currentUser?.empresa || 'Transportadora não especificada')
                             
                             if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
                               return <TransulLogo className="mx-auto" width={160} height={45} />
@@ -2920,7 +2929,7 @@ const GeracaoEtiquetas = () => {
                             <div>
                               <strong>Transportadora:</strong> {(() => {
                                 const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-                                const userCompany = String(currentUser?.empresa || 'Transportadora não especificada')
+                                const userCompany = getCompanyName(currentUser?.empresa || 'Transportadora não especificada')
                                 
                                 if (userCompany.toLowerCase().includes('transul') || userCompany.includes('Transportadora não especificada') || !userCompany || userCompany === 'demo-empresa-123') {
                                   return 'Transul Transporte'
