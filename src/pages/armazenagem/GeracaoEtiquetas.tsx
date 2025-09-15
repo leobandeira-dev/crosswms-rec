@@ -1107,7 +1107,8 @@ const GeracaoEtiquetas = () => {
           toast.success(`${totalLabels} etiquetas preparadas para impressão`)
         } catch (printError) {
           console.error('Erro durante processo de impressão:', printError)
-          throw new Error(`Erro na impressão: ${printError.message}`)
+          const errorMessage = printError instanceof Error ? printError.message : 'Erro desconhecido na impressão'
+          throw new Error(`Erro na impressão: ${errorMessage}`)
         }
       }
     } catch (error) {

@@ -20,17 +20,14 @@ export function registerVolumesRoutes(app: any) {
       try {
         await db.execute(sql`
           INSERT INTO notas_fiscais (
-            id, chave_acesso, numero_nf, empresa_id, 
-            emitente_razao_social, destinatario_razao_social, 
-            valor_total, peso_bruto, volumes,
+            id, chave_acesso, numero, empresa_id, 
+            valor_total, peso_total, volume_total,
             data_emissao, status, created_at, updated_at
           ) VALUES (
             ${notaFiscalId},
             ${notaFiscal.chave_nota_fiscal || notaFiscal.chave_acesso || notaFiscalId},
             ${notaFiscal.numero_nota || notaFiscal.numero_nf || ''},
-            ${notaFiscal.empresa_id || ''},
-            ${notaFiscal.emitente_razao_social || ''},
-            ${notaFiscal.destinatario_razao_social || ''},
+            ${notaFiscal.empresa_id || 'demo-empresa-123'},
             ${parseFloat(notaFiscal.valor_nota_fiscal?.toString().replace(/[^\d.,]/g, '').replace(',', '.') || '0')},
             ${parseFloat(notaFiscal.peso_bruto?.toString() || '0')},
             ${parseInt(notaFiscal.quantidade_volumes?.toString() || '1')},
@@ -76,14 +73,14 @@ export function registerVolumesRoutes(app: any) {
       let numeroNotaReal = nota_fiscal_id.substring(0, 8); // Fallback
       try {
         const notaFiscalData = await db.select({
-          numero_nf: notas_fiscais.numero_nf
+          numero: notas_fiscais.numero
         })
         .from(notas_fiscais)
         .where(eq(notas_fiscais.id, nota_fiscal_id))
         .limit(1);
         
-        if (notaFiscalData.length > 0 && notaFiscalData[0].numero_nf) {
-          numeroNotaReal = notaFiscalData[0].numero_nf;
+        if (notaFiscalData.length > 0 && notaFiscalData[0].numero) {
+          numeroNotaReal = notaFiscalData[0].numero;
           console.log('Número real da nota fiscal encontrado:', numeroNotaReal);
         }
       } catch (error) {
@@ -341,10 +338,10 @@ export function registerVolumesRoutes(app: any) {
 
       // Buscar volumes pela nota fiscal número
       const volumes = await db.execute(sql`
-        SELECT v.*, nf.numero_nf
+        SELECT v.*, nf.numero
         FROM volumes_etiqueta v
         JOIN notas_fiscais nf ON v.nota_fiscal_id = nf.id
-        WHERE nf.numero_nf = ${nota_fiscal_numero}
+        WHERE nf.numero = ${nota_fiscal_numero}
       `);
 
       res.json({ success: true, volumes });
@@ -379,7 +376,7 @@ export function registerVolumesRoutes(app: any) {
         UPDATE volumes_etiqueta 
         SET status = ${status}, updated_at = ${new Date()}
         WHERE nota_fiscal_id IN (
-          SELECT id FROM notas_fiscais WHERE numero_nf = ${nota_fiscal_numero}
+          SELECT id FROM notas_fiscais WHERE numero = ${nota_fiscal_numero}
         )
       `);
 
@@ -464,14 +461,15 @@ export function registerVolumesRoutes(app: any) {
         SELECT v.id, v.codigo_etiqueta, v.status
         FROM volumes_etiqueta v
         JOIN notas_fiscais nf ON v.nota_fiscal_id = nf.id
-        WHERE nf.numero_nf = ${numero_nota}
+        WHERE nf.numero = ${numero_nota}
       `);
 
+      const volumesArray = Array.isArray(volumes) ? volumes : volumes.rows || [];
       res.json({ 
         success: true, 
-        existem: volumes.length > 0,
-        quantidade: volumes.length,
-        volumes: volumes
+        existem: volumesArray.length > 0,
+        quantidade: volumesArray.length,
+        volumes: volumesArray
       });
 
     } catch (error) {
@@ -500,17 +498,14 @@ export function registerVolumesRoutes(app: any) {
         try {
           await db.execute(sql`
             INSERT INTO notas_fiscais (
-              id, chave_acesso, numero_nf, empresa_id, 
-              emitente_razao_social, destinatario_razao_social, 
-              valor_total, peso_bruto, volumes,
+              id, chave_acesso, numero, empresa_id, 
+              valor_total, peso_total, volume_total,
               data_emissao, status, created_at, updated_at
             ) VALUES (
               ${notaFiscalId},
               ${nota_fiscal_info.chave_nota_fiscal || notaFiscalId},
               ${nota_fiscal_info.numero_nota || ''},
-              ${nota_fiscal_info.empresa_id || ''},
-              ${nota_fiscal_info.emitente_razao_social || ''},
-              ${nota_fiscal_info.destinatario_razao_social || ''},
+              ${nota_fiscal_info.empresa_id || 'demo-empresa-123'},
               ${parseFloat(nota_fiscal_info.valor_nota_fiscal?.toString().replace(/[^\d.,]/g, '').replace(',', '.') || '0')},
               ${parseFloat(nota_fiscal_info.peso_bruto?.toString() || '0')},
               ${parseInt(nota_fiscal_info.quantidade_volumes?.toString() || volumes.length.toString())},
