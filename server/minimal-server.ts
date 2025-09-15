@@ -1,10 +1,14 @@
 import express from "express";
+import { registerVolumesRoutes } from "./volumes-routes";
 
 const app = express();
 const port = 3001; // Porta fixa para o backend
 
 // Middleware básico
 app.use(express.json());
+
+// Registrar rotas de volumes/etiquetas
+registerVolumesRoutes(app);
 
 // CORS para Replit
 app.use((req, res, next) => {
