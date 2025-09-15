@@ -3,7 +3,7 @@ import path from "path";
 import { registerVolumesRoutes } from "./volumes-routes";
 
 const app = express();
-const port = Number(process.env.PORT) || 5000; // Use PORT env var or default to 5000 for Replit
+const port = Number(process.env.PORT) || 8080; // Use PORT env var or default to 8080 for deployment
 
 // Middleware básico
 app.use(express.json({ limit: '50mb' }));
