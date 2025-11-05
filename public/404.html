@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>404 • CrossWMS</title>
+    <meta name="robots" content="noindex" />
+    <script>
+      // GitHub Pages SPA redirect (rafgraph pattern)
+      (function (l) {
+        var path = l.pathname.replace(/\/$/, "");
+        var search = l.search || "";
+        if (search.startsWith("/?")) {
+          var decoded = search
+            .slice(2)
+            .split("&")
+            .map(function (s) { return s.replace(/~and~/g, "&"); })
+            .join("?");
+          l.replace(path + decoded + l.hash);
+        }
+      })(window.location);
+    </script>
+    <style>
+      html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto}
+      .wrap{display:grid;place-items:center;height:100%;text-align:center;color:#333}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div>
+        <h1>Redirecionando…</h1>
+        <p>Se não redirecionar automaticamente, volte para a <a href="/crosswms-rec/">página inicial</a>.</p>
+      </div>
+    </div>
+  </body>
+</html>
