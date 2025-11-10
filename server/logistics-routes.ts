@@ -1,7 +1,7 @@
 import { Express, Request, Response } from "express";
 import { logisticsStorage } from "./logistics-storage";
 import { storage } from "./storage";
-import { insertUserSchema, insertEmpresaSchema, insertColetaSchema, insertOrdemCargaSchema, insertOcorrenciaSchema } from "@shared/schema";
+import { insertUserSchema, insertEmpresaSchema, insertColetaSchema, insertOrdemCargaSchema, insertOcorrenciaSchema, insertMotoristaSchema, insertVeiculoSchema, insertNotaFiscalSchema } from "@shared/schema";
 import { z } from "zod";
 import { DOMParser } from "@xmldom/xmldom";
 import { or, ilike, desc } from "drizzle-orm";
@@ -387,10 +387,18 @@ export function registerLogisticsRoutes(app: Express) {
   // Fleet management
   app.get('/api/veiculos', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { status, empresa_id } = req.query;
+      const querySchema = z.object({ status: z.string().optional() });
+      const parsed = querySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Parâmetros inválidos', details: parsed.error.flatten() });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId) {
+        return res.status(403).json({ error: 'Empresa do usuário não definida' });
+      }
       const veiculos = await logisticsStorage.listVeiculos({
-        status: status as string,
-        empresa_id: empresa_id as string
+        status: parsed.data.status,
+        empresa_id: empresaId,
       });
       res.json(veiculos);
     } catch (error) {
@@ -399,17 +407,232 @@ export function registerLogisticsRoutes(app: Express) {
     }
   });
 
+  app.put('/api/veiculos/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const current = await logisticsStorage.getVeiculoById(id);
+      if (!current) {
+        return res.status(404).json({ error: 'Veículo não encontrado' });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId || (current.empresa_id && current.empresa_id !== empresaId)) {
+        return res.status(403).json({ error: 'Acesso negado a este recurso' });
+      }
+      const schema = insertVeiculoSchema.omit({ id: true, created_at: true, updated_at: true });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+      }
+      const veiculo = await logisticsStorage.updateVeiculo(id, parsed.data as any);
+      if (!veiculo) {
+        return res.status(404).json({ error: 'Veículo não encontrado' });
+      }
+      res.json(veiculo);
+    } catch (error) {
+      console.error('Update veiculo error:', error);
+      res.status(500).json({ error: 'Falha ao atualizar veículo' });
+    }
+  });
+
   app.get('/api/motoristas', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { status, disponivel } = req.query;
+      const querySchema = z.object({ status: z.string().optional(), disponivel: z.enum(['true','false']).optional() });
+      const parsed = querySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Parâmetros inválidos', details: parsed.error.flatten() });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId) {
+        return res.status(403).json({ error: 'Empresa do usuário não definida' });
+      }
       const motoristas = await logisticsStorage.listMotoristas({
-        status: status as string,
-        disponivel: disponivel === 'true'
+        status: parsed.data.status,
+        disponivel: parsed.data.disponivel ? parsed.data.disponivel === 'true' : undefined,
+        empresa_id: empresaId,
       });
       res.json(motoristas);
     } catch (error) {
       console.error('List motoristas error:', error);
       res.status(500).json({ error: 'Failed to fetch drivers' });
+    }
+  });
+
+  app.put('/api/motoristas/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const current = await logisticsStorage.getMotoristaById(id);
+      if (!current) {
+        return res.status(404).json({ error: 'Motorista não encontrado' });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId || (current.empresa_id && current.empresa_id !== empresaId)) {
+        return res.status(403).json({ error: 'Acesso negado a este recurso' });
+      }
+      const schema = insertMotoristaSchema.omit({ id: true, created_at: true, updated_at: true });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+      }
+      const motorista = await logisticsStorage.updateMotorista(id, parsed.data as any);
+      if (!motorista) {
+        return res.status(404).json({ error: 'Motorista não encontrado' });
+      }
+      res.json(motorista);
+    } catch (error) {
+      console.error('Update motorista error:', error);
+      res.status(500).json({ error: 'Falha ao atualizar motorista' });
+    }
+  });
+
+  // Deleção de motoristas e veículos
+  app.delete('/api/motoristas/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const deleted = await logisticsStorage.deleteMotorista(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Motorista não encontrado' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete motorista error:', error);
+      res.status(500).json({ error: 'Falha ao excluir motorista' });
+    }
+  });
+
+  app.delete('/api/veiculos/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const deleted = await logisticsStorage.deleteVeiculo(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Veículo não encontrado' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete veiculo error:', error);
+      res.status(500).json({ error: 'Falha ao excluir veículo' });
+    }
+  });
+
+  // Coletas - atualização
+  app.put('/api/coletas/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const current = await logisticsStorage.getColetaById(id);
+      if (!current) {
+        return res.status(404).json({ error: 'Coleta não encontrada' });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId || (current.empresa_cliente_id && current.empresa_cliente_id !== empresaId)) {
+        return res.status(403).json({ error: 'Acesso negado a este recurso' });
+      }
+      const schema = insertColetaSchema.omit({ id: true, created_at: true, updated_at: true });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+      }
+      const coleta = await logisticsStorage.updateColeta(id, parsed.data as any);
+      if (!coleta) {
+        return res.status(404).json({ error: 'Coleta não encontrada' });
+      }
+      res.json(coleta);
+    } catch (error) {
+      console.error('Update coleta error:', error);
+      res.status(500).json({ error: 'Falha ao atualizar coleta' });
+    }
+  });
+
+  // Ocorrências (SAC) - atualização
+  app.put('/api/ocorrencias/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const current = await logisticsStorage.getOcorrenciaById(id);
+      if (!current) {
+        return res.status(404).json({ error: 'Ocorrência não encontrada' });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId || (current.empresa_cliente_id && current.empresa_cliente_id !== empresaId)) {
+        return res.status(403).json({ error: 'Acesso negado a este recurso' });
+      }
+      const schema = insertOcorrenciaSchema.omit({ id: true, created_at: true, updated_at: true });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+      }
+      const ocorrencia = await logisticsStorage.updateOcorrencia(id, parsed.data as any);
+      if (!ocorrencia) {
+        return res.status(404).json({ error: 'Ocorrência não encontrada' });
+      }
+      res.json(ocorrencia);
+    } catch (error) {
+      console.error('Update ocorrencia error:', error);
+      res.status(500).json({ error: 'Falha ao atualizar ocorrência' });
+    }
+  });
+
+  // Deleção de coletas e ocorrências
+  app.delete('/api/coletas/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const deleted = await logisticsStorage.deleteColeta(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Coleta não encontrada' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete coleta error:', error);
+      res.status(500).json({ error: 'Falha ao excluir coleta' });
+    }
+  });
+
+  app.delete('/api/ocorrencias/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const deleted = await logisticsStorage.deleteOcorrencia(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Ocorrência não encontrada' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete ocorrencia error:', error);
+      res.status(500).json({ error: 'Falha ao excluir ocorrência' });
+    }
+  });
+
+  // Notas fiscais - atualização
+  app.put('/api/notas-fiscais/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const current = await logisticsStorage.getNotaFiscalById(id);
+      if (!current) {
+        return res.status(404).json({ error: 'Nota fiscal não encontrada' });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId || (current.empresa_id && current.empresa_id !== empresaId)) {
+        return res.status(403).json({ error: 'Acesso negado a este recurso' });
+      }
+      const schema = insertNotaFiscalSchema.omit({ id: true, created_at: true, updated_at: true });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+      }
+      const nota = await logisticsStorage.updateNotaFiscal(id, parsed.data as any);
+      if (!nota) {
+        return res.status(404).json({ error: 'Nota fiscal não encontrada' });
+      }
+      res.json(nota);
+    } catch (error) {
+      console.error('Update nota fiscal error:', error);
+      res.status(500).json({ error: 'Falha ao atualizar nota fiscal' });
+    }
+  });
+
+  // Empresas - deleção pública via logística
+  app.delete('/api/empresas/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const deleted = await logisticsStorage.deleteEmpresa(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: 'Empresa não encontrada' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Delete empresa error:', error);
+      res.status(500).json({ error: 'Falha ao excluir empresa' });
     }
   });
 
@@ -680,6 +903,212 @@ export function registerLogisticsRoutes(app: Express) {
     } catch (error) {
       console.error('CEP lookup error:', error);
       res.status(500).json({ error: 'Failed to lookup CEP' });
+    }
+  });
+
+  // GET por ID - Veículos
+  app.get('/api/veiculos/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const veiculo = await logisticsStorage.getVeiculoById(req.params.id);
+      if (!veiculo) {
+        return res.status(404).json({ error: 'Veículo não encontrado' });
+      }
+      res.json(veiculo);
+    } catch (error) {
+      console.error('Get veiculo error:', error);
+      res.status(500).json({ error: 'Falha ao buscar veículo' });
+    }
+  });
+
+  // GET por ID - Motoristas
+  app.get('/api/motoristas/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const motorista = await logisticsStorage.getMotoristaById(req.params.id);
+      if (!motorista) {
+        return res.status(404).json({ error: 'Motorista não encontrado' });
+      }
+      res.json(motorista);
+    } catch (error) {
+      console.error('Get motorista error:', error);
+      res.status(500).json({ error: 'Falha ao buscar motorista' });
+    }
+  });
+
+  // GET por ID - Coletas
+  app.get('/api/coletas/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const coleta = await logisticsStorage.getColetaById(req.params.id);
+      if (!coleta) {
+        return res.status(404).json({ error: 'Coleta não encontrada' });
+      }
+      res.json(coleta);
+    } catch (error) {
+      console.error('Get coleta error:', error);
+      res.status(500).json({ error: 'Falha ao buscar coleta' });
+    }
+  });
+
+  // GET por ID - Ocorrências
+  app.get('/api/ocorrencias/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const ocorrencia = await logisticsStorage.getOcorrenciaById(req.params.id);
+      if (!ocorrencia) {
+        return res.status(404).json({ error: 'Ocorrência não encontrada' });
+      }
+      res.json(ocorrencia);
+    } catch (error) {
+      console.error('Get ocorrencia error:', error);
+      res.status(500).json({ error: 'Falha ao buscar ocorrência' });
+    }
+  });
+
+  // GET por ID - Notas Fiscais
+  app.get('/api/notas-fiscais/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const nota = await logisticsStorage.getNotaFiscalById(req.params.id);
+      if (!nota) {
+        return res.status(404).json({ error: 'Nota fiscal não encontrada' });
+      }
+      res.json(nota);
+    } catch (error) {
+      console.error('Get nota fiscal error:', error);
+      res.status(500).json({ error: 'Falha ao buscar nota fiscal' });
+    }
+  });
+
+  // PATCH - atualizações parciais
+  app.patch('/api/veiculos/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const current = await logisticsStorage.getVeiculoById(id);
+      if (!current) {
+        return res.status(404).json({ error: 'Veículo não encontrado' });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId || (current.empresa_id && current.empresa_id !== empresaId)) {
+        return res.status(403).json({ error: 'Acesso negado a este recurso' });
+      }
+      const schema = insertVeiculoSchema.omit({ id: true, created_at: true, updated_at: true }).partial();
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+      }
+      const veiculo = await logisticsStorage.updateVeiculo(id, parsed.data as any);
+      if (!veiculo) {
+        return res.status(404).json({ error: 'Veículo não encontrado' });
+      }
+      res.json(veiculo);
+    } catch (error) {
+      console.error('Patch veiculo error:', error);
+      res.status(500).json({ error: 'Falha ao atualizar parcialmente veículo' });
+    }
+  });
+
+  app.patch('/api/motoristas/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const current = await logisticsStorage.getMotoristaById(id);
+      if (!current) {
+        return res.status(404).json({ error: 'Motorista não encontrado' });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId || (current.empresa_id && current.empresa_id !== empresaId)) {
+        return res.status(403).json({ error: 'Acesso negado a este recurso' });
+      }
+      const schema = insertMotoristaSchema.omit({ id: true, created_at: true, updated_at: true }).partial();
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+      }
+      const motorista = await logisticsStorage.updateMotorista(id, parsed.data as any);
+      if (!motorista) {
+        return res.status(404).json({ error: 'Motorista não encontrado' });
+      }
+      res.json(motorista);
+    } catch (error) {
+      console.error('Patch motorista error:', error);
+      res.status(500).json({ error: 'Falha ao atualizar parcialmente motorista' });
+    }
+  });
+
+  app.patch('/api/coletas/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const current = await logisticsStorage.getColetaById(id);
+      if (!current) {
+        return res.status(404).json({ error: 'Coleta não encontrada' });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId || (current.empresa_cliente_id && current.empresa_cliente_id !== empresaId)) {
+        return res.status(403).json({ error: 'Acesso negado a este recurso' });
+      }
+      const schema = insertColetaSchema.omit({ id: true, created_at: true, updated_at: true }).partial();
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+      }
+      const coleta = await logisticsStorage.updateColeta(id, parsed.data as any);
+      if (!coleta) {
+        return res.status(404).json({ error: 'Coleta não encontrada' });
+      }
+      res.json(coleta);
+    } catch (error) {
+      console.error('Patch coleta error:', error);
+      res.status(500).json({ error: 'Falha ao atualizar parcialmente coleta' });
+    }
+  });
+
+  app.patch('/api/ocorrencias/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const current = await logisticsStorage.getOcorrenciaById(id);
+      if (!current) {
+        return res.status(404).json({ error: 'Ocorrência não encontrada' });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId || (current.empresa_cliente_id && current.empresa_cliente_id !== empresaId)) {
+        return res.status(403).json({ error: 'Acesso negado a este recurso' });
+      }
+      const schema = insertOcorrenciaSchema.omit({ id: true, created_at: true, updated_at: true }).partial();
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+      }
+      const ocorrencia = await logisticsStorage.updateOcorrencia(id, parsed.data as any);
+      if (!ocorrencia) {
+        return res.status(404).json({ error: 'Ocorrência não encontrada' });
+      }
+      res.json(ocorrencia);
+    } catch (error) {
+      console.error('Patch ocorrencia error:', error);
+      res.status(500).json({ error: 'Falha ao atualizar parcialmente ocorrência' });
+    }
+  });
+
+  app.patch('/api/notas-fiscais/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const current = await logisticsStorage.getNotaFiscalById(id);
+      if (!current) {
+        return res.status(404).json({ error: 'Nota fiscal não encontrada' });
+      }
+      const empresaId = req.user?.empresa_id;
+      if (!empresaId || (current.empresa_id && current.empresa_id !== empresaId)) {
+        return res.status(403).json({ error: 'Acesso negado a este recurso' });
+      }
+      const schema = insertNotaFiscalSchema.omit({ id: true, created_at: true, updated_at: true }).partial();
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: 'Dados inválidos', details: parsed.error.flatten() });
+      }
+      const nota = await logisticsStorage.updateNotaFiscal(id, parsed.data as any);
+      if (!nota) {
+        return res.status(404).json({ error: 'Nota fiscal não encontrada' });
+      }
+      res.json(nota);
+    } catch (error) {
+      console.error('Patch nota fiscal error:', error);
+      res.status(500).json({ error: 'Falha ao atualizar parcialmente nota fiscal' });
     }
   });
 

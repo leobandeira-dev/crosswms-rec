@@ -4,7 +4,8 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 export default defineConfig({
-  base: "/crosswms-rec/",
+  // Usa base "/" automaticamente em ambiente Vercel; mantém "/crosswms-rec/" local
+  base: (process.env.VERCEL && process.env.VERCEL === "1") ? "/" : "/crosswms-rec/",
   plugins: [
     react(),
     runtimeErrorOverlay(),
@@ -18,9 +19,8 @@ export default defineConfig({
       "localhost",
       "127.0.0.1"
     ],
-    hmr: {
-      clientPort: 443
-    },
+    // Use HTTPS client port in Replit, local dev uses default
+    hmr: process.env.REPL_ID || process.env.REPLIT ? { clientPort: 443 } : undefined,
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

@@ -58,6 +58,7 @@ export interface ILogisticsStorage {
   getEmpresaById(id: string): Promise<Empresa | undefined>;
   listEmpresas(filters?: { tipo?: string; status?: string }): Promise<Empresa[]>;
   updateEmpresa(id: string, updates: Partial<Empresa>): Promise<Empresa | undefined>;
+  deleteEmpresa(id: string): Promise<boolean>;
   
   // Profile operations
   createPerfil(perfil: InsertPerfil): Promise<Perfil>;
@@ -69,12 +70,14 @@ export interface ILogisticsStorage {
   getVeiculoById(id: string): Promise<Veiculo | undefined>;
   listVeiculos(filters?: { status?: string; empresa_id?: string }): Promise<Veiculo[]>;
   updateVeiculo(id: string, updates: Partial<Veiculo>): Promise<Veiculo | undefined>;
+  deleteVeiculo(id: string): Promise<boolean>;
   
   // Fleet management - Drivers
   createMotorista(motorista: InsertMotorista): Promise<Motorista>;
   getMotoristaById(id: string): Promise<Motorista | undefined>;
   listMotoristas(filters?: { status?: string; disponivel?: boolean }): Promise<Motorista[]>;
   updateMotorista(id: string, updates: Partial<Motorista>): Promise<Motorista | undefined>;
+  deleteMotorista(id: string): Promise<boolean>;
   
   // Invoice management
   createNotaFiscal(nota: InsertNotaFiscal): Promise<NotaFiscal>;
@@ -113,6 +116,7 @@ export interface ILogisticsStorage {
   updateColeta(id: string, updates: Partial<Coleta>): Promise<Coleta | undefined>;
   aprovarColeta(id: string, userId: string): Promise<Coleta | undefined>;
   recusarColeta(id: string, userId: string, motivo: string): Promise<Coleta | undefined>;
+  deleteColeta(id: string): Promise<boolean>;
   
   // Loading order management
   createOrdemCarga(ordem: InsertOrdemCarga): Promise<OrdemCarga>;
@@ -136,6 +140,7 @@ export interface ILogisticsStorage {
     usuario_responsavel_id?: string;
   }): Promise<Ocorrencia[]>;
   updateOcorrencia(id: string, updates: Partial<Ocorrencia>): Promise<Ocorrencia | undefined>;
+  deleteOcorrencia(id: string): Promise<boolean>;
   
   // Dashboard metrics
   getDashboardMetrics(empresa_id?: string): Promise<{
@@ -289,6 +294,14 @@ export class LogisticsStorage implements ILogisticsStorage {
     return empresa || undefined;
   }
 
+  async deleteEmpresa(id: string): Promise<boolean> {
+    const deleted = await db
+      .delete(empresas)
+      .where(eq(empresas.id, id))
+      .returning();
+    return deleted.length > 0;
+  }
+
   async createPerfil(perfilData: InsertPerfil): Promise<Perfil> {
     const [perfil] = await db
       .insert(perfis)
@@ -341,6 +354,14 @@ export class LogisticsStorage implements ILogisticsStorage {
     return veiculo || undefined;
   }
 
+  async deleteVeiculo(id: string): Promise<boolean> {
+    const deleted = await db
+      .delete(veiculos)
+      .where(eq(veiculos.id, id))
+      .returning();
+    return deleted.length > 0;
+  }
+
   async createMotorista(motoristaData: InsertMotorista): Promise<Motorista> {
     const [motorista] = await db
       .insert(motoristas)
@@ -371,6 +392,14 @@ export class LogisticsStorage implements ILogisticsStorage {
       .where(eq(motoristas.id, id))
       .returning();
     return motorista || undefined;
+  }
+
+  async deleteMotorista(id: string): Promise<boolean> {
+    const deleted = await db
+      .delete(motoristas)
+      .where(eq(motoristas.id, id))
+      .returning();
+    return deleted.length > 0;
   }
 
   async createNotaFiscal(notaData: InsertNotaFiscal): Promise<NotaFiscal> {
@@ -507,6 +536,14 @@ export class LogisticsStorage implements ILogisticsStorage {
     return coleta || undefined;
   }
 
+  async deleteColeta(id: string): Promise<boolean> {
+    const deleted = await db
+      .delete(coletas)
+      .where(eq(coletas.id, id))
+      .returning();
+    return deleted.length > 0;
+  }
+
   async aprovarColeta(id: string, userId: string): Promise<Coleta | undefined> {
     return this.updateColeta(id, {
       status: "aprovada",
@@ -610,6 +647,14 @@ export class LogisticsStorage implements ILogisticsStorage {
       .where(eq(ocorrencias.id, id))
       .returning();
     return ocorrencia || undefined;
+  }
+
+  async deleteOcorrencia(id: string): Promise<boolean> {
+    const deleted = await db
+      .delete(ocorrencias)
+      .where(eq(ocorrencias.id, id))
+      .returning();
+    return deleted.length > 0;
   }
 
   async getDashboardMetrics(empresa_id?: string): Promise<{

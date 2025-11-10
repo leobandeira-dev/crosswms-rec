@@ -1,5 +1,6 @@
 import express from "express";
 import { registerVolumesRoutes } from "./volumes-routes";
+import { registerCnpjRoutes } from "./cnpj-routes";
 
 const app = express();
 const port = 3001; // Porta fixa para o backend
@@ -9,6 +10,8 @@ app.use(express.json());
 
 // Registrar rotas de volumes/etiquetas
 registerVolumesRoutes(app);
+// Registrar rota de consulta CNPJ
+registerCnpjRoutes(app);
 
 // CORS para Replit
 app.use((req, res, next) => {
@@ -370,11 +373,16 @@ app.post("/api/xml/fetch-from-nsdocs", async (req, res) => {
   }
 });
 
-// Servir arquivos estáticos do Vite
-app.use(express.static('dist/public'));
+// Redireciona raiz para o prefixo de app
+app.get('/', (req, res) => {
+  res.redirect('/crosswms-rec/');
+});
 
-// Rota para servir o index.html do Vite
-app.get('*', (req, res) => {
+// Servir arquivos estáticos do Vite sob o prefixo configurado no build
+app.use('/crosswms-rec', express.static('dist/public'));
+
+// Rota para servir o index.html do Vite para quaisquer caminhos da app
+app.get('/crosswms-rec/*', (req, res) => {
   res.sendFile('index.html', { root: 'dist/public' });
 });
 

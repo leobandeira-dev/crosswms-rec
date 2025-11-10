@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import { registerVolumesRoutes } from "./volumes-routes";
+import { registerCnpjRoutes } from "./cnpj-routes";
 
 const app = express();
 const port = Number(process.env.PORT) || 8080; // Use PORT env var or default to 8080 for deployment
@@ -11,6 +12,8 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Registrar rotas de volumes/etiquetas
 registerVolumesRoutes(app);
+// Registrar rota de consulta CNPJ
+registerCnpjRoutes(app);
 
 // CORS para production
 app.use((req, res, next) => {
