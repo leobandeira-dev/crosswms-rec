@@ -1,6 +1,8 @@
 import express from "express";
 import { registerVolumesRoutes } from "./volumes-routes";
 import { registerCnpjRoutes } from "./cnpj-routes";
+import fetch from "node-fetch";
+import 'dotenv/config';
 
 const app = express();
 const port = 3001; // Porta fixa para o backend
@@ -373,9 +375,181 @@ app.post("/api/xml/fetch-from-nsdocs", async (req, res) => {
   }
 });
 
+// XML API Routes - Meu Danfe (sem dependência de Python, compatível com Windows)
+app.post('/api/xml/fetch-from-meudanfe', async (req, res) => {
+  try {
+    const { chaveNotaFiscal } = req.body;
+    const onlyDigits = (chaveNotaFiscal || '').toString().replace(/\D/g, '');
+    if (!onlyDigits || onlyDigits.length !== 44) {
+      return res.status(400).json({
+        success: false,
+        error: 'Chave de nota fiscal deve ter exatamente 44 dígitos',
+        code: 'invalid_key'
+      });
+    }
+
+    const apiKey = process.env.MEUDANFE_API_KEY;
+    if (!apiKey) {
+      return res.status(400).json({ success: false, error: 'MEUDANFE_API_KEY ausente no servidor', code: 'meudanfe_api_key_missing' });
+    }
+
+    const chave = onlyDigits;
+
+    // Etapa opcional: adicionar a NFe na área do cliente
+    try {
+      const addUrl = `https://api.meudanfe.com.br/v2/fd/add/${chave}`;
+      const addRes = await fetch(addUrl, {
+        method: 'PUT',
+        headers: { 'Api-Key': apiKey }
+      });
+      let addJson: any = null;
+      try { addJson = await addRes.json(); } catch {}
+      console.log('[MeuDanfe] ADD status:', addRes.status, addJson ? JSON.stringify(addJson) : '(sem corpo)');
+      if (addRes.status === 402) {
+        return res.status(402).json({ success: false, error: 'Saldo insuficiente na API Meu Danfe', code: 'meudanfe_insufficient_balance' });
+      }
+      if (addRes.status === 401 || addRes.status === 403) {
+        return res.status(401).json({ success: false, error: 'Api-Key inválida ou não informada na API Meu Danfe', code: 'meudanfe_invalid_api_key' });
+      }
+    } catch (e) {
+      console.warn('[MeuDanfe] Falha ao adicionar NFe, prosseguindo para GET xml:', e instanceof Error ? e.message : e);
+    }
+
+    // Baixar XML oficial da NFe
+    const getUrl = `https://api.meudanfe.com.br/v2/fd/get/xml/${chave}`;
+    const getRes = await fetch(getUrl, {
+      method: 'GET',
+      headers: { 'Api-Key': apiKey }
+    });
+
+    let getJson: any = null;
+    try {
+      getJson = await getRes.json();
+    } catch (err) {
+      console.error('[MeuDanfe] Erro ao parsear JSON do GET xml:', err);
+    }
+
+    if (!getRes.ok) {
+      return res.status(getRes.status).json({ success: false, error: `Erro HTTP Meu Danfe GET: ${getRes.status}`, code: 'meudanfe_http_error', raw: getJson });
+    }
+
+    // Tentar extrair XML em diferentes formatos possíveis
+    const tryExtractXml = (json: any): string | null => {
+      if (!json || typeof json !== 'object') return null;
+      const candidates = [
+        json.xml,
+        json.data?.xml,
+        json.result?.xml,
+        json.conteudo?.xml,
+        json.conteudo,
+        json.payload?.xml,
+      ];
+      for (const c of candidates) {
+        if (typeof c === 'string' && c.includes('<NFe')) return c;
+      }
+      return null;
+    };
+
+    const xml = tryExtractXml(getJson);
+    if (!xml) {
+      return res.status(200).json({ success: false, error: 'Resposta do Meu Danfe não contém XML', code: 'meudanfe_no_xml', raw: getJson });
+    }
+
+    return res.json({ success: true, xml, provider: 'meudanfe_api' });
+  } catch (error) {
+    console.error('[MeuDanfe] Erro no endpoint backend:', error);
+    return res.status(500).json({ success: false, error: 'Erro interno do servidor Meu Danfe', code: 'server_error' });
+  }
+});
+
+// XML API Routes - Meu Danfe Batch
+app.post('/api/xml/fetch-from-meudanfe/batch', async (req, res) => {
+  try {
+    const { keys } = req.body || {};
+    if (!Array.isArray(keys) || keys.length === 0) {
+      return res.status(400).json({ success: false, error: 'Body deve conter array "keys" com chaves de 44 dígitos', code: 'invalid_body' });
+    }
+
+    const apiKey = process.env.MEUDANFE_API_KEY;
+    if (!apiKey) {
+      return res.status(400).json({ success: false, error: 'MEUDANFE_API_KEY ausente no servidor', code: 'meudanfe_api_key_missing' });
+    }
+
+    const normalize = (k: any) => String(k || '').replace(/\D/g, '');
+    const validKeys = keys
+      .map(normalize)
+      .filter(k => k.length === 44);
+
+    if (validKeys.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhuma chave válida (44 dígitos) fornecida', code: 'no_valid_keys' });
+    }
+
+    const BATCH_SIZE = 5;
+    const results: Array<{ key: string; success: boolean; xml_content?: string; error?: string; code?: string; status?: string; raw?: any }> = [];
+
+    const processKey = async (chave: string) => {
+      // Opcional: adicionar a NFe na área do cliente
+      try {
+        const addUrl = `https://api.meudanfe.com.br/v2/fd/add/${chave}`;
+        const addRes = await fetch(addUrl, { method: 'PUT', headers: { 'Api-Key': apiKey } });
+        if (addRes.status === 402) {
+          return { key: chave, success: false, error: 'Saldo insuficiente na API Meu Danfe', code: 'meudanfe_insufficient_balance', status: 'error' };
+        }
+        if (addRes.status === 401 || addRes.status === 403) {
+          return { key: chave, success: false, error: 'Api-Key inválida ou não informada na API Meu Danfe', code: 'meudanfe_invalid_api_key', status: 'error' };
+        }
+      } catch (e) {
+        // prosseguir para GET
+      }
+
+      const getUrl = `https://api.meudanfe.com.br/v2/fd/get/xml/${chave}`;
+      const getRes = await fetch(getUrl, { method: 'GET', headers: { 'Api-Key': apiKey, 'Accept': 'application/json' } });
+
+      let getJson: any = null;
+      try { getJson = await getRes.json(); } catch (err) {
+        // manter nulo
+      }
+
+      if (!getRes.ok) {
+        return { key: chave, success: false, error: `Erro HTTP Meu Danfe GET: ${getRes.status}`, code: 'meudanfe_http_error', raw: getJson, status: 'error' };
+      }
+
+      const xml = tryExtractXml(getJson);
+      if (!xml) {
+        return { key: chave, success: false, error: 'Resposta do Meu Danfe não contém XML', code: 'meudanfe_no_xml', raw: getJson, status: 'error' };
+      }
+
+      return { key: chave, success: true, xml_content: xml, status: 'completed' };
+    };
+
+    for (let i = 0; i < validKeys.length; i += BATCH_SIZE) {
+      const slice = validKeys.slice(i, i + BATCH_SIZE);
+      const settled = await Promise.allSettled(slice.map(k => processKey(k)));
+      for (const [idx, s] of settled.entries()) {
+        if (s.status === 'fulfilled') {
+          results.push(s.value);
+        } else {
+          results.push({ key: slice[idx], success: false, error: (s as any).reason?.message || 'Erro desconhecido', code: 'unknown_error', status: 'error' });
+        }
+      }
+    }
+
+    return res.json({ success: true, items: results });
+  } catch (error) {
+    console.error('[MeuDanfe] Erro no endpoint batch:', error);
+    return res.status(500).json({ success: false, error: 'Erro interno do servidor Meu Danfe (batch)', code: 'server_error' });
+  }
+});
+
 // Redireciona raiz para o prefixo de app
 app.get('/', (req, res) => {
   res.redirect('/crosswms-rec/');
+});
+
+// Fallback: qualquer rota não-API e fora do prefixo deve ir para o SPA
+app.get(/^\/(?!api|crosswms-rec).*/, (req, res) => {
+  const target = `/crosswms-rec${req.path}`;
+  res.redirect(target);
 });
 
 // Servir arquivos estáticos do Vite sob o prefixo configurado no build

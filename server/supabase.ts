@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import * as schema from '../shared/schema-supabase';
+import * as schema from '../shared/schema';
 
 // Verificar se as variáveis de ambiente estão definidas
 if (!process.env.SUPABASE_URL) {
@@ -23,12 +23,11 @@ export const supabaseClient = createClient(
 );
 
 // Criar instância do Drizzle com o cliente Supabase
-// Precisamos usar o postgres-js para conectar ao Supabase
+// Precisamos usar o postgres-js para conectar ao banco PostgreSQL do Supabase
 import postgres from 'postgres';
 
-// Criar conexão postgres-js usando a URL do Supabase
-const connectionString = process.env.SUPABASE_URL?.replace('supabase', 'supabase-db');
-const sql = postgres(connectionString || '', {
+// Usar a string de conexão direta ao banco do Supabase
+const sql = postgres(process.env.SUPABASE_DB_URL || '', {
   max: 10,
   prepare: false,
 });

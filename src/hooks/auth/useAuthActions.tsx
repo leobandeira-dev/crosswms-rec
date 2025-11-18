@@ -88,12 +88,30 @@ export const useAuthActions = (
     }
   };
 
-  const signUp = async (email: string, password: string, nome: string, telefone?: string, cnpj?: string): Promise<void> => {
+  const signUp = async (
+    email: string,
+    password: string,
+    nome: string,
+    telefone?: string,
+    cnpj?: string,
+    tipo_usuario?: 'transportador' | 'cliente' | 'fornecedor' | 'super_admin',
+    razao_social?: string,
+    operador_logistico_cnpj?: string
+  ): Promise<void> => {
     setLoading(true);
     try {
       console.log('Tentativa de registro com:', email);
       
-      const response = await authService.signUp(email, password, nome, telefone, cnpj);
+      const response = await authService.signUp(
+        email,
+        password,
+        nome,
+        telefone,
+        cnpj,
+        tipo_usuario,
+        razao_social,
+        operador_logistico_cnpj
+      );
       setUser(response.user);
       
       toast({

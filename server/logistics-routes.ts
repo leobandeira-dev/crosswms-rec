@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { insertUserSchema, insertEmpresaSchema, insertColetaSchema, insertOrdemCargaSchema, insertOcorrenciaSchema, insertMotoristaSchema, insertVeiculoSchema, insertNotaFiscalSchema } from "@shared/schema";
 import { z } from "zod";
 import { DOMParser } from "@xmldom/xmldom";
+import fetch from 'node-fetch';
+import 'dotenv/config';
 import { or, ilike, desc } from "drizzle-orm";
 
 interface AuthenticatedRequest extends Request {
@@ -39,76 +41,79 @@ const requireAuth = async (req: AuthenticatedRequest, res: Response, next: Funct
 };
 
 export function registerLogisticsRoutes(app: Express) {
-  // Public XML Scraper endpoint for meudanfe.com.br automation (no auth required)
+  // Public XML endpoint for Meu Danfe via API (Windows-friendly, no Python)
   app.post('/api/xml/fetch-from-meudanfe', async (req: Request, res: Response) => {
     try {
       const { chaveNotaFiscal } = req.body;
-      
-      if (!chaveNotaFiscal || chaveNotaFiscal.length !== 44) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Chave de nota fiscal deve ter exatamente 44 dígitos' 
+      const chave = String(chaveNotaFiscal || '').replace(/\D/g, '');
+      if (!chave || chave.length !== 44) {
+        return res.status(400).json({
+          success: false,
+          error: 'Chave de nota fiscal deve ter exatamente 44 dígitos',
+          code: 'invalid_key'
         });
       }
 
-      console.log(`Iniciando automação para buscar XML da chave: ${chaveNotaFiscal}`);
-      
-      // Execute Python scraper
-      const { spawn } = require('child_process');
-      const pythonProcess = spawn('python3', [
-        '/home/runner/workspace/server/xml_scraper.py',
-        chaveNotaFiscal
-      ]);
+      const apiKey = process.env.MEUDANFE_API_KEY;
+      if (!apiKey) {
+        return res.status(400).json({ success: false, error: 'MEUDANFE_API_KEY ausente no servidor', code: 'meudanfe_api_key_missing' });
+      }
 
-      let outputData = '';
-      let errorData = '';
-
-      pythonProcess.stdout.on('data', (data: Buffer) => {
-        outputData += data.toString();
-      });
-
-      pythonProcess.stderr.on('data', (data: Buffer) => {
-        errorData += data.toString();
-        console.error('Python stderr:', data.toString());
-      });
-
-      pythonProcess.on('close', (code: number) => {
-        if (code === 0) {
-          try {
-            const result = JSON.parse(outputData);
-            res.json(result);
-          } catch (parseError) {
-            console.error('Erro ao fazer parse do resultado do Python:', parseError);
-            res.status(500).json({
-              success: false,
-              error: 'Erro ao processar resposta do automação'
-            });
-          }
-        } else {
-          console.error('Python process failed with code:', code);
-          console.error('Error output:', errorData);
-          res.status(500).json({
-            success: false,
-            error: 'Erro durante a automação. Tente novamente.'
-          });
+      // Etapa opcional: adicionar a NFe na área do cliente
+      try {
+        const addUrl = `https://api.meudanfe.com.br/v2/fd/add/${chave}`;
+        const addRes = await fetch(addUrl, { method: 'PUT', headers: { 'Api-Key': apiKey } });
+        if (addRes.status === 402) {
+          return res.status(402).json({ success: false, error: 'Saldo insuficiente na API Meu Danfe', code: 'meudanfe_insufficient_balance' });
         }
-      });
+        if (addRes.status === 401 || addRes.status === 403) {
+          return res.status(401).json({ success: false, error: 'Api-Key inválida ou não informada na API Meu Danfe', code: 'meudanfe_invalid_api_key' });
+        }
+      } catch (e) {
+        console.warn('[MeuDanfe] Falha ao adicionar NFe, prosseguindo para GET xml:', e instanceof Error ? e.message : e);
+      }
 
-      // Set timeout for the automation
-      setTimeout(() => {
-        pythonProcess.kill();
-        res.status(408).json({
-          success: false,
-          error: 'Timeout na automação. O processo demorou mais que o esperado.'
-        });
-      }, 60000); // 60 seconds timeout
+      // Baixar XML oficial da NFe
+      const getUrl = `https://api.meudanfe.com.br/v2/fd/get/xml/${chave}`;
+      const getRes = await fetch(getUrl, { method: 'GET', headers: { 'Api-Key': apiKey, 'Accept': 'application/json' } });
 
+      let getJson: any = null;
+      try { getJson = await getRes.json(); } catch (err) {
+        console.error('[MeuDanfe] Erro ao parsear JSON do GET xml:', err);
+      }
+
+      if (!getRes.ok) {
+        return res.status(getRes.status).json({ success: false, error: `Erro HTTP Meu Danfe GET: ${getRes.status}`, code: 'meudanfe_http_error', raw: getJson });
+      }
+
+      // Extrair XML considerando formatos variados
+      const tryExtractXml = (json: any): string | null => {
+        if (!json || typeof json !== 'object') return null;
+        const candidates = [
+          json.xml,
+          json.xml_content,
+          json.data?.xml,
+          json.result?.xml,
+          json.conteudo?.xml,
+          json.conteudo,
+          json.payload?.xml,
+        ];
+        for (const c of candidates) {
+          if (typeof c === 'string' && c.includes('<NFe')) return c;
+          if (typeof c === 'string' && c.includes('<?xml')) return c;
+        }
+        return null;
+      };
+
+      const xmlContent = tryExtractXml(getJson);
+      if (!xmlContent) {
+        return res.status(200).json({ success: false, error: 'Resposta do Meu Danfe não contém XML', code: 'meudanfe_no_xml', raw: getJson });
+      }
+
+      return res.json({ success: true, xml_content: xmlContent, provider: 'meudanfe_api' });
     } catch (error) {
-      console.error('Erro no endpoint de busca XML:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Erro interno do servidor durante automação' 
-      });
+      console.error('[MeuDanfe] Erro no endpoint backend:', error);
+      return res.status(500).json({ success: false, error: 'Erro interno do servidor Meu Danfe', code: 'server_error' });
     }
   });
 

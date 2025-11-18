@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import CubagemManager, { NotaVolumeData, VolumeData as CubagemVolumeData } from '../../components/comum/CubagemManager';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { fetchCNPJData, formatCNPJ, cleanCNPJ } from '@/utils/cnpjApi';
@@ -67,13 +68,18 @@ import {
   Grid3X3,
   Camera,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  ChevronRight
 } from 'lucide-react';
+  import { HelpCircle } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import Webcam from 'react-webcam';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import MobileCameraGuide from '@/components/MobileCameraGuide';
 import { useDeviceOrientation } from '@/hooks/useDeviceOrientation';
 import Quagga from 'quagga';
+// Hook reutilizado para gravar notas no Supabase
+import { useFormSubmission } from '@/pages/armazenagem/recebimento/components/forms/hooks/useFormSubmission';
 
 // Volume calculation interfaces
 interface VolumeData {
@@ -84,7 +90,7 @@ interface VolumeData {
   m3: number;
 }
 
-const NotasFiscaisEntrada = () => {
+  const NotasFiscaisEntrada = () => {
   const [, setLocation] = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { isPortrait, isLandscape, isMobile } = useDeviceOrientation();
@@ -116,6 +122,34 @@ const NotasFiscaisEntrada = () => {
   const [invoiceBatch, setInvoiceBatch] = useState<any[]>([]);
   const [batchInvoices, setBatchInvoices] = useState<any[]>([]);
   const [currentInvoiceIndex, setCurrentInvoiceIndex] = useState(0);
+  // Auto add: ao bipar a chave, busca e adiciona automaticamente ao lote
+  const [autoAddToBatch, setAutoAddToBatch] = useState(false);
+  // Batch mode removido do fluxo de UI (manter off)
+  const [batchMode, setBatchMode] = useState(false);
+  const [scannedKeys, setScannedKeys] = useState<string[]>([]);
+
+  // Ao colar/teclar no campo de chave quando Auto adicionar está ativo, capturar automaticamente
+  const handlePasteNFeKey = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    if (!autoAddToBatch) return;
+    const text = e.clipboardData.getData('text') || '';
+    const cleaned = text.replace(/\D/g, '').trim();
+    if (cleaned.length === 44) {
+      e.preventDefault();
+      setFormData(prev => ({ ...prev, chave_nota_fiscal: cleaned }));
+      void autoFetchAndAddToBatch(cleaned);
+    }
+  };
+
+  const handleKeyDownNFeInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!autoAddToBatch) return;
+    if (e.key === 'Enter') {
+      const current = (formData.chave_nota_fiscal || '').replace(/\D/g, '').trim();
+      if (current.length === 44) {
+        e.preventDefault();
+        void autoFetchAndAddToBatch(current);
+      }
+    }
+  };
   
   // Dialog states for invoice actions
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -342,10 +376,7 @@ useEffect(() => {
           emitente_cep: data.data?.cep || ''
         }));
         
-        toast({
-          title: "Dados preenchidos",
-          description: "Dados do emitente preenchidos com sucesso",
-        });
+        // Sucesso silencioso ao preencher dados do emitente
       }
     } catch (error) {
       setCnpjEmitenteError('Erro ao buscar dados do CNPJ');
@@ -379,10 +410,7 @@ useEffect(() => {
           destinatario_cep: data.data?.cep || ''
         }));
         
-        toast({
-          title: "Dados preenchidos",
-          description: "Dados do destinatário preenchidos com sucesso",
-        });
+        // Sucesso silencioso ao preencher dados do destinatário
       }
     } catch (error) {
       setCnpjDestinatarioError('Erro ao buscar dados do CNPJ');
@@ -438,7 +466,7 @@ useEffect(() => {
             // Dados da Nota Fiscal
             chave_nota_fiscal: extractNFeKey(xmlDoc) || '',
             data_hora_emissao: getXMLValue(xmlDoc, 'dhEmi') || '',
-            numero_nota: getXMLValue(xmlDoc, 'nNF') || '',
+  numero_nota: getXMLValue(xmlDoc, 'ide nNF') || getXMLValue(xmlDoc, 'nNF') || '',
             serie_nota: getXMLValue(xmlDoc, 'serie') || '',
             natureza_operacao: getXMLValue(xmlDoc, 'natOp') || '',
             operacao: 'Coleta TRANSUL',
@@ -764,7 +792,7 @@ useEffect(() => {
   const extractDataFromXml = (xmlDoc: Document) => {
     return {
       chave_nota_fiscal: extractNFeKey(xmlDoc),
-      numero_nota: getXMLValue(xmlDoc, 'ide nNF'),
+  numero_nota: getXMLValue(xmlDoc, 'ide nNF') || getXMLValue(xmlDoc, 'nNF'),
       serie_nota: getXMLValue(xmlDoc, 'ide serie'),
       data_hora_emissao: getXMLValue(xmlDoc, 'ide dhEmi'),
       natureza_operacao: getXMLValue(xmlDoc, 'ide natOp'),
@@ -798,139 +826,82 @@ useEffect(() => {
     };
   };
 
-  // Batch processing for multiple NSDocs API calls
-  const processBatchNSDocsKeys = async (keys: string[]) => {
+  // (Removido) processBatchNSDocsKeys
+
+  // Processamento em lote (sem fallback). Em caso de erro, apenas avisar.
+  const processBatchMeuDanfeKeys = async (keys: string[]) => {
     setIsApiLoading(true);
-    const newBatch: any[] = [];
-    const newStatus: {[key: string]: 'pending' | 'processing' | 'completed' | 'error'} = {};
 
-    for (const key of keys) {
-      newStatus[key] = 'pending';
-    }
-    setBatchProcessingStatus(newStatus);
+    try {
+      // Marcar todos como processing durante a chamada
+      const processingStatus: { [key: string]: 'pending' | 'processing' | 'completed' | 'error' } = {};
+      for (const key of keys) processingStatus[key] = 'processing';
+      setBatchProcessingStatus(processingStatus);
 
-    for (const key of keys) {
-      try {
-        setBatchProcessingStatus(prev => ({ ...prev, [key]: 'processing' }));
-        
-        // Get authentication token from localStorage
-        const token = localStorage.getItem('token');
-        if (!token) {
-          throw new Error('Token de autenticação não encontrado');
-        }
-
-        const response = await fetch('/api/xml/fetch-from-nsdocs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ chaveNotaFiscal: key })
-        });
-
-        if (!response.ok) {
-          throw new Error(`Erro HTTP: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        if (result.success && result.data) {
-          const invoiceData = {
-            ...result.data,
-            // Apply shared fields
-            operacao: sharedFields.operacao,
-            cliente_retira: sharedFields.cliente_retira,
-            tipo_frete: sharedFields.tipo_frete,
-            custo_extra: sharedFields.custo_extra,
-            source: 'nsdocs_api',
-            processedAt: new Date().toISOString()
-          };
-          
-          newBatch.push(invoiceData);
-          setBatchProcessingStatus(prev => ({ ...prev, [key]: 'completed' }));
-        } else {
-          throw new Error(result.error || 'Erro na API NSDocs');
-        }
-      } catch (error) {
-        console.error(`Erro ao processar chave ${key}:`, error);
-        setBatchProcessingStatus(prev => ({ ...prev, [key]: 'error' }));
-      }
-    }
-
-    // Processa automaticamente as notas e conecta aos volumes (igual ao XML upload)
-    if (newBatch.length > 0) {
-      // Add processed invoices to volume extract 
-      const processedBatch = newBatch.map(invoice => {
-        const processedInvoice = {
-          ...invoice,
-          id: invoice.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          data_processamento: new Date().toISOString(),
-          processedAt: new Date().toISOString(),
-          operacao: invoice.operacao || sharedFields.operacao,
-          cliente_retira: invoice.cliente_retira || sharedFields.cliente_retira,
-          tipo_frete: invoice.tipo_frete || sharedFields.tipo_frete,
-          custo_extra: invoice.custo_extra || sharedFields.custo_extra,
-          status: 'pendente'
-        };
-
-        // Add to volume extract with correct volume count (API batch)
-        const existingVolumeData = batchVolumeData.find(item => item.numeroNota === invoice.numero_nota);
-        if (!existingVolumeData) {
-          console.log(`[DEBUG] Processando volumes para NFe ${invoice.numero_nota}:`, {
-            quantidade_volumes: invoice.quantidade_volumes,
-            volume_quantidade: invoice.volume_quantidade,
-            peso_bruto: invoice.peso_bruto,
-            volume_peso_bruto: invoice.volume_peso_bruto,
-            invoice_data: invoice
-          });
-          const quantidadeVolumes = parseInt(invoice.quantidade_volumes || invoice.volume_quantidade || '1') || 1;
-          const pesoTotal = parseFloat(invoice.peso_bruto || invoice.volume_peso_bruto || '0') || 0;
-          console.log(`[DEBUG] Quantidade de volumes calculada: ${quantidadeVolumes}, Peso total: ${pesoTotal}`);
-          const volumes = Array.from({ length: quantidadeVolumes }, (_, index) => ({
-            volume: index + 1,
-            altura: 0,
-            largura: 0,
-            comprimento: 0,
-            m3: 0
-          }));
-          
-          const notaVolumeData: NotaVolumeData = {
-            notaId: processedInvoice.id,
-            numeroNota: invoice.numero_nota,
-            volumes: volumes,
-            totalM3: 0,
-            pesoTotal: pesoTotal
-          };
-          console.log(`[DEBUG] NotaVolumeData criado para ${invoice.numero_nota}:`, notaVolumeData);
-          setBatchVolumeData(prev => {
-            const updated = [...prev, notaVolumeData];
-            console.log(`[DEBUG] BatchVolumeData atualizado:`, updated);
-            return updated;
-          });
-        }
-
-        return processedInvoice;
+      const response = await fetch('/api/xml/fetch-from-meudanfe/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keys })
       });
 
-      // Store in temporary batch for document generation
-      setBatchInvoices(processedBatch);
-      
-      // Store processed invoices for marketplace use
-      const existingProcessed = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
-      const updatedProcessed = [...existingProcessed, ...processedBatch];
-      localStorage.setItem('processedInvoices', JSON.stringify(updatedProcessed));
-      setProcessedInvoices(updatedProcessed);
-      
-      // Clear API processing states
-      setInvoiceBatch([]);
-      setBatchProcessingStatus({});
-      
-      setShowSuccessAnimation(true);
-      setTimeout(() => setShowSuccessAnimation(false), 3000);
-      
-      alert(`${processedBatch.length} nota(s) fiscal(is) processada(s) automaticamente!\n\nAs notas foram adicionadas ao Extrato de Volumes.`);
+      if (!response.ok) {
+        console.error('[MeuDanfe] Erro HTTP no batch:', response.status);
+        const errorStatus: { [key: string]: 'pending' | 'processing' | 'completed' | 'error' } = {};
+        for (const key of keys) errorStatus[key] = 'error';
+        setBatchProcessingStatus(errorStatus);
+        toast({
+          title: 'Erro ao processar em lote',
+          description: `Falha na consulta ao Meu Danfe (HTTP ${response.status}). Tente novamente mais tarde.`,
+          variant: 'destructive'
+        });
+      } else {
+        const result = await response.json();
+        console.log('[Frontend] Resposta Meu Danfe (batch):', result);
+
+        const items: Array<{ key: string; success: boolean; xml_content?: string; error?: string; status?: string }> = result.items || [];
+
+        if (!items.length) {
+          const errorStatus: { [key: string]: 'pending' | 'processing' | 'completed' | 'error' } = {};
+          for (const key of keys) errorStatus[key] = 'error';
+          setBatchProcessingStatus(errorStatus);
+          toast({
+            title: 'Batch retornou vazio',
+            description: 'Nenhuma resposta foi recebida para as chaves informadas.',
+            variant: 'destructive'
+          });
+        } else {
+          let okCount = 0;
+          let errCount = 0;
+          for (const item of items) {
+            if (item.success && item.xml_content) {
+              await processXMLContent(item.xml_content);
+              setBatchProcessingStatus(prev => ({ ...prev, [item.key]: 'completed' }));
+              okCount++;
+            } else {
+              setBatchProcessingStatus(prev => ({ ...prev, [item.key]: 'error' }));
+              errCount++;
+            }
+          }
+          toast({
+            title: 'Processamento em lote concluído',
+            description: `Sucesso: ${okCount} • Erros: ${errCount}`
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[MeuDanfe] Erro no batch (exception):', error);
+      const errorStatus: { [key: string]: 'pending' | 'processing' | 'completed' | 'error' } = {};
+      for (const key of keys) errorStatus[key] = 'error';
+      setBatchProcessingStatus(errorStatus);
+      toast({
+        title: 'Erro ao processar em lote',
+        description: 'Ocorreu uma exceção durante o processamento. Verifique conexão e configuração da API.',
+        variant: 'destructive'
+      });
     }
 
+    setShowSuccessAnimation(true);
+    setTimeout(() => setShowSuccessAnimation(false), 3000);
     setIsApiLoading(false);
   };
 
@@ -960,47 +931,60 @@ useEffect(() => {
     };
     
     setInvoiceBatch(prev => [...prev, newInvoice]);
-    
-    // Clear form for next invoice
-    setFormData({
-      chave_nota_fiscal: '',
-      data_hora_emissao: '',
-      numero_nota: '',
-      serie_nota: '',
-      natureza_operacao: '',
-      operacao: sharedFields.operacao,
-      cliente_retira: sharedFields.cliente_retira,
-      emitente_cnpj: '',
-      emitente_razao_social: '',
-      emitente_telefone: '',
-      emitente_uf: '',
-      emitente_cidade: '',
-      emitente_bairro: '',
-      emitente_endereco: '',
-      emitente_numero: '',
-      emitente_cep: '',
-      destinatario_cnpj: '',
-      destinatario_razao_social: '',
-      destinatario_telefone: '',
-      destinatario_uf: '',
-      destinatario_cidade: '',
-      destinatario_bairro: '',
-      destinatario_endereco: '',
-      destinatario_numero: '',
-      destinatario_cep: '',
-      quantidade_volumes: '',
-      valor_nota_fiscal: '',
-      peso_bruto: '',
-      informacoes_complementares: '',
-      numero_pedido: '',
-      tipo_frete: sharedFields.tipo_frete,
-      custo_extra: sharedFields.custo_extra
-    });
   };
 
   // Remove invoice from batch
   const removeInvoiceFromBatch = (index: number) => {
     setInvoiceBatch(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Move a nota atual do formulário para o mockup (batchInvoices) sem limpar o formulário
+  const enqueueCurrentInvoiceToBatch = () => {
+    const hasCurrent = (formData.numero_nota && formData.numero_nota.trim() !== '') ||
+      (formData.chave_nota_fiscal && formData.chave_nota_fiscal.trim().length === 44);
+    if (!hasCurrent) return;
+
+    const processedInvoice = {
+      ...formData,
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      data_processamento: new Date().toISOString(),
+      processedAt: new Date().toISOString(),
+      operacao: formData.operacao || sharedFields.operacao,
+      cliente_retira: formData.cliente_retira || sharedFields.cliente_retira,
+      tipo_frete: formData.tipo_frete || sharedFields.tipo_frete,
+      custo_extra: formData.custo_extra || sharedFields.custo_extra,
+      status: 'pendente'
+    };
+
+    // Garantir estrutura de cubagem
+    const existingVolumeData = batchVolumeData.find(item => item.numeroNota === formData.numero_nota);
+    if (!existingVolumeData) {
+      const quantidadeVolumes = parseInt(formData.quantidade_volumes || '1') || 1;
+      const volumes = Array.from({ length: quantidadeVolumes }, (_, index) => ({
+        volume: index + 1,
+        altura: 0,
+        largura: 0,
+        comprimento: 0,
+        m3: 0
+      }));
+
+      const notaVolumeData: NotaVolumeData = {
+        notaId: processedInvoice.id,
+        numeroNota: formData.numero_nota,
+        volumes: volumes,
+        totalM3: 0,
+        pesoTotal: parseFloat(formData.peso_bruto || '0') || 0
+      };
+      setBatchVolumeData(prev => [...prev, notaVolumeData]);
+    }
+
+    setBatchInvoices(prev => [...prev, processedInvoice]);
+    const existingProcessed = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
+    const updatedProcessed = [...existingProcessed, processedInvoice];
+    localStorage.setItem('processedInvoices', JSON.stringify(updatedProcessed));
+    setProcessedInvoices(updatedProcessed);
+
+    toast({ title: 'Nota adicionada ao mockup', description: `NF ${formData.numero_nota || formData.chave_nota_fiscal}` });
   };
 
   // Process all invoices in batch
@@ -1063,90 +1047,7 @@ useEffect(() => {
 
 
 
-  // Run NSDocs connectivity diagnostics
-  const runNSDocsDiagnostics = async () => {
-    setIsApiLoading(true);
-    
-    try {
-      const response = await fetch('/api/nsdocs/diagnostics', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      const diagnostics = await response.json();
-      
-      // Format diagnostic results for user display
-      const formatDiagnostics = (data: any) => {
-        let report = `=== DIAGNÓSTICO DE CONECTIVIDADE NSDOCS ===\n\n`;
-        report += `Timestamp: ${data.timestamp}\n`;
-        report += `Ambiente: ${data.environment}\n`;
-        report += `Host: ${data.host}\n\n`;
-        
-        report += `🔗 CONECTIVIDADE BÁSICA:\n`;
-        if (data.tests.basicConnectivity?.success) {
-          report += `✅ Conexão com NSDocs API estabelecida\n`;
-          report += `   Status: ${data.tests.basicConnectivity.status}\n`;
-        } else {
-          report += `❌ Falha na conexão básica\n`;
-          report += `   Erro: ${data.tests.basicConnectivity?.error}\n`;
-        }
-        
-        report += `\n🔐 ENDPOINTS DE AUTENTICAÇÃO:\n`;
-        if (data.tests.authEndpoints) {
-          Object.entries(data.tests.authEndpoints).forEach(([endpoint, result]: [string, any]) => {
-            if (result.accessible) {
-              report += `✅ ${endpoint} - Status: ${result.status}\n`;
-            } else {
-              report += `❌ ${endpoint} - Erro: ${result.error}\n`;
-            }
-          });
-        }
-        
-        report += `\n🌐 RESOLUÇÃO DNS:\n`;
-        if (data.tests.dnsResolution?.success) {
-          report += `✅ DNS resolvido: ${data.tests.dnsResolution.address}\n`;
-        } else {
-          report += `❌ Falha DNS: ${data.tests.dnsResolution?.error}\n`;
-        }
-        
-        report += `\n🔒 CONECTIVIDADE SSL/TLS:\n`;
-        if (data.tests.tlsConnectivity?.success) {
-          report += `✅ SSL/TLS estabelecido\n`;
-          report += `   Versão: ${data.tests.tlsConnectivity.tlsVersion}\n`;
-        } else {
-          report += `❌ Falha SSL/TLS: ${data.tests.tlsConnectivity?.error}\n`;
-        }
-        
-        return report;
-      };
-      
-      const diagnosticReport = formatDiagnostics(diagnostics);
-      
-      // Show diagnostic results in a dialog
-      const showResults = confirm(
-        diagnosticReport + 
-        '\n\nEste diagnóstico ajuda a identificar problemas de conectividade entre preview e produção.\n\n' +
-        'Clique OK para copiar o relatório para a área de transferência, ou Cancelar para fechar.'
-      );
-      
-      if (showResults) {
-        navigator.clipboard.writeText(diagnosticReport).then(() => {
-          alert('Relatório de diagnóstico copiado para a área de transferência!');
-        }).catch(() => {
-          alert('Não foi possível copiar. Relatório exibido no console.');
-          console.log(diagnosticReport);
-        });
-      }
-      
-    } catch (error) {
-      console.error('Erro no diagnóstico:', error);
-      alert('Erro ao executar diagnóstico de conectividade. Verifique o console para detalhes.');
-    } finally {
-      setIsApiLoading(false);
-    }
-  };
+  // (Removido) runNSDocsDiagnostics
 
   // Logística da Informação API integration function
   const fetchXmlWithLogisticaInfo = async () => {
@@ -1315,10 +1216,7 @@ useEffect(() => {
           return newData;
         });
 
-        toast({
-          title: "✅ NFe encontrada via Logística da Informação!",
-          description: `Dados da NFe ${result.data.numero_nf} carregados com sucesso.`
-        });
+        // Sucesso silencioso ao carregar dados da NFe via Logística da Informação
 
         // Store data in sessionStorage for other components
         sessionStorage.setItem('nfeData', JSON.stringify(result.data));
@@ -1349,10 +1247,10 @@ useEffect(() => {
   };
 
   // Integração com Meu Danfe: PUT /fd/add/{Chave-Acesso}
-  const fetchNFeWithMeuDanfe = async () => {
-    const chave = formData.chave_nota_fiscal?.trim();
+  const fetchNFeWithMeuDanfe = async (options?: { addToBatch?: boolean }) => {
+    const chave = (formData.chave_nota_fiscal || '').replace(/\D/g, '').trim();
     if (!chave || chave.length !== 44) {
-      alert('Por favor, insira uma chave válida de 44 dígitos');
+      toast({ title: 'Chave inválida', description: 'Informe 44 dígitos', variant: 'destructive' });
       return;
     }
 
@@ -1377,22 +1275,14 @@ useEffect(() => {
       const { res, json } = await callApi();
       if (!res.ok) {
         if (res.status === 402) {
-          // Saldo insuficiente: NF-e antiga ou crédito necessário. Usar fallback alternativo.
-          alert('Saldo insuficiente na API Meu Danfe (402). Tentando via integração alternativa.');
-          // Pequena pausa para evitar múltiplas requisições seguidas
-          await new Promise(r => setTimeout(r, 600));
-          try {
-            await fetchXmlFromMeuDanfeBackend(chave);
-          } catch (e) {
-            console.error('[MeuDanfe] Fallback backend falhou:', e);
-          }
+          toast({ title: 'Saldo insuficiente (402)', description: 'Verifique créditos do Meu Danfe', variant: 'destructive' });
           return;
         }
         if (res.status === 401 || res.status === 403) {
-          alert('Api-Key não informada/ inválida ou substituída (401/403). Verifique VITE_MEUDANFE_API_KEY.');
+          toast({ title: 'API Key inválida', description: 'Verifique VITE_MEUDANFE_API_KEY', variant: 'destructive' });
           return;
         }
-        alert(`Erro HTTP na API Meu Danfe: ${res.status}`);
+        toast({ title: `Erro HTTP ${res.status}`, description: 'Falha ao adicionar a NFe', variant: 'destructive' });
         return;
       }
 
@@ -1406,202 +1296,39 @@ useEffect(() => {
         const msg2 = json2?.statusMessage || '';
 
         if (status2 === 'OK') {
-          alert('NFe adicionada com sucesso ao Meu Danfe (status OK).');
           // Aguardar um pouco para evitar bloqueio por múltiplas requisições e garantir indexação
           await new Promise(r => setTimeout(r, 1200));
-          await fetchXmlFromMeuDanfeAPI(chave);
+          await fetchXmlFromMeuDanfeAPI(chave, { addToBatch: options?.addToBatch ?? true });
         } else if (status2 === 'NOT_FOUND') {
-          alert('NFe não encontrada no Meu Danfe.');
+          toast({ title: 'NFe não encontrada', description: 'Meu Danfe não localizou a NFe', variant: 'destructive' });
         } else if (status2 === 'ERROR') {
-          alert(`Erro Meu Danfe: ${msg2 || 'Falha ao consultar'}`);
+          toast({ title: 'Erro Meu Danfe', description: msg2 || 'Falha ao consultar', variant: 'destructive' });
         } else {
-          alert(`Solicitação em andamento: ${status2 || 'desconhecido'}. Tente novamente após alguns segundos.`);
+          console.log('[MeuDanfe] Solicitação em andamento:', status2 || 'desconhecido');
         }
         return;
       }
 
       if (status === 'OK') {
-        alert('NFe adicionada com sucesso ao Meu Danfe (status OK).');
         // Após confirmar que a NFe foi adicionada, baixar XML diretamente da Área do Cliente
         await new Promise(r => setTimeout(r, 1200));
-        await fetchXmlFromMeuDanfeAPI(chave);
+        await fetchXmlFromMeuDanfeAPI(chave, { addToBatch: options?.addToBatch ?? true });
       } else if (status === 'NOT_FOUND') {
-        alert('NFe não encontrada no Meu Danfe.');
+        toast({ title: 'NFe não encontrada', description: 'Meu Danfe não localizou a NFe', variant: 'destructive' });
       } else if (status === 'ERROR') {
-        alert(`Erro Meu Danfe: ${statusMessage || 'Falha ao consultar'}`);
+        toast({ title: 'Erro Meu Danfe', description: statusMessage || 'Falha ao consultar', variant: 'destructive' });
       } else {
-        alert(`Status Meu Danfe: ${status || 'desconhecido'}`);
+        console.log('[MeuDanfe] Status não reconhecido:', status || 'desconhecido');
       }
     } catch (error) {
       console.error('[MeuDanfe] Erro na integração:', error);
-      alert('Erro ao conectar à API Meu Danfe. Verifique sua conexão e tente novamente.');
+      toast({ title: 'Erro de conexão', description: 'Falha ao conectar ao Meu Danfe', variant: 'destructive' });
     } finally {
       setIsApiLoading(false);
     }
   };
-
-
-  // Automated RPA function using backend Selenium automation
-  const fetchXmlWithNSDocs = async () => {
-    if (!formData.chave_nota_fiscal || formData.chave_nota_fiscal.length !== 44) {
-      alert('Por favor, insira uma chave de nota fiscal válida (44 dígitos)');
-      return;
-    }
-
-    setIsApiLoading(true);
-    
-    try {
-      console.log(`[Frontend] Iniciando busca NSDocs para: ${formData.chave_nota_fiscal}`);
-      
-      // Get authentication token from localStorage
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Token de autenticação não encontrado');
-      }
-
-      const response = await fetch('/api/xml/fetch-from-nsdocs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          chaveNotaFiscal: formData.chave_nota_fiscal
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      console.log('[Frontend] Resposta da API NSDocs:', {
-        success: result.success,
-        hasData: !!result.data,
-        hasXml: !!result.xml_content,
-        error: result.error,
-        source: result.source
-      });
-
-      if (result.success && result.data) {
-        // Use the structured data directly from NSDocs API v3
-        const nfeData = result.data;
-        
-        const extractedData = {
-          // Dados da Nota Fiscal
-          chave_nota_fiscal: nfeData.chave_nota_fiscal || formData.chave_nota_fiscal,
-          data_hora_emissao: nfeData.data_hora_emissao || '',
-          numero_nota: nfeData.numero_nota || '',
-          serie_nota: nfeData.serie_nota || '',
-          natureza_operacao: nfeData.natureza_operacao || '',
-          operacao: nfeData.operacao || 'Entrada',
-          cliente_retira: nfeData.cliente_retira || 'Não',
-          
-          // Dados do Emitente
-          emitente_cnpj: nfeData.emitente_cnpj || '',
-          emitente_razao_social: nfeData.emitente_razao_social || '',
-          emitente_telefone: nfeData.emitente_telefone || '',
-          emitente_uf: nfeData.emitente_uf || '',
-          emitente_cidade: nfeData.emitente_cidade || '',
-          emitente_bairro: nfeData.emitente_bairro || '',
-          emitente_endereco: nfeData.emitente_endereco || '',
-          emitente_numero: nfeData.emitente_numero || '',
-          emitente_cep: nfeData.emitente_cep || '',
-          
-          // Dados do Destinatário
-          destinatario_cnpj: nfeData.destinatario_cnpj || '',
-          destinatario_razao_social: nfeData.destinatario_razao_social || '',
-          destinatario_telefone: nfeData.destinatario_telefone || '',
-          destinatario_uf: nfeData.destinatario_uf || '',
-          destinatario_cidade: nfeData.destinatario_cidade || '',
-          destinatario_bairro: nfeData.destinatario_bairro || '',
-          destinatario_endereco: nfeData.destinatario_endereco || '',
-          destinatario_numero: nfeData.destinatario_numero || '',
-          destinatario_cep: nfeData.destinatario_cep || '',
-          
-          // Informações Adicionais
-          quantidade_volumes: nfeData.quantidade_volumes || '',
-          valor_nota_fiscal: nfeData.valor_nota_fiscal || '',
-          peso_bruto: nfeData.peso_bruto || '',
-          informacoes_complementares: nfeData.informacoes_complementares || '',
-          numero_pedido: nfeData.numero_pedido || '',
-          tipo_frete: nfeData.tipo_frete || 'CIF',
-          custo_extra: nfeData.custo_extra || ''
-        };
-        
-        setFormData(extractedData);
-        
-        // Processar automaticamente e conectar aos volumes (via NSDocs API)
-        const processedInvoice = {
-          ...extractedData,
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          data_processamento: new Date().toISOString(),
-          processedAt: new Date().toISOString(),
-          operacao: extractedData.operacao || sharedFields.operacao,
-          cliente_retira: extractedData.cliente_retira || sharedFields.cliente_retira,
-          tipo_frete: extractedData.tipo_frete || sharedFields.tipo_frete,
-          custo_extra: extractedData.custo_extra || sharedFields.custo_extra,
-          status: 'pendente'
-        };
-
-        // Add to volume extract automatically with correct volume count
-        const existingVolumeData = batchVolumeData.find(item => item.numeroNota === extractedData.numero_nota);
-        if (!existingVolumeData) {
-          const quantidadeVolumes = parseInt(extractedData.quantidade_volumes || '1') || 1;
-          const volumes = Array.from({ length: quantidadeVolumes }, (_, index) => ({
-            volume: index + 1,
-            altura: 0,
-            largura: 0,
-            comprimento: 0,
-            m3: 0
-          }));
-          
-          const notaVolumeData: NotaVolumeData = {
-            notaId: processedInvoice.id,
-            numeroNota: extractedData.numero_nota,
-            volumes: volumes,
-            totalM3: 0,
-            pesoTotal: parseFloat(extractedData.peso_bruto || '0') || 0
-          };
-          setBatchVolumeData(prev => [...prev, notaVolumeData]);
-        }
-
-        // Store in temporary batch for document generation
-        setBatchInvoices(prev => [...prev, processedInvoice]);
-        
-        // Store processed invoices for marketplace use
-        const existingProcessed = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
-        const updatedProcessed = [...existingProcessed, processedInvoice];
-        localStorage.setItem('processedInvoices', JSON.stringify(updatedProcessed));
-        setProcessedInvoices(updatedProcessed);
-        
-        setShowSuccessAnimation(true);
-        setTimeout(() => setShowSuccessAnimation(false), 3000);
-        
-        alert('XML obtido via NSDocs API e processado automaticamente com sucesso!');
-      } else {
-        // Handle different error types
-        if (result.requires_api_key || result.source === 'nsdocs_config_missing') {
-          console.log('[Frontend] NSDocs não configurado, usando Logística da Informação como fallback');
-          // Usar Logística da Informação como fallback
-          return await fetchXmlWithLogisticaInfo();
-        } else if (result.nfe_not_found) {
-          alert('NFe não encontrada na base de dados do NSDocs. Verifique se a chave está correta ou tente com outra NFe.');
-        } else if (result.api_error) {
-          alert(`Erro na API NSDocs: ${result.error}\n\nVerifique se sua chave de API está válida e ativa.`);
-        } else {
-          alert(result.error || 'Erro desconhecido ao buscar XML');
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao buscar XML via NSDocs:', error);
-      alert('Erro ao conectar com a API do NSDocs. Verifique sua conexão e tente novamente.');
-    } finally {
-      setIsApiLoading(false);
-    }
-  };
-
+  // (Removido) fetchXmlWithNSDocs
+  
   // Enhanced XML file drop zone with RPA integration
   const handleRPAXmlDrop = (acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -1615,9 +1342,10 @@ useEffect(() => {
   };
 
   // Process XML content received as text (e.g., via backend scraping)
-  const processXMLContent = async (xmlText: string) => {
+  const processXMLContent = async (xmlText: string, options?: { addToBatch?: boolean }) => {
     try {
       setIsProcessing(true);
+      const addToBatch = options?.addToBatch ?? true;
 
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
@@ -1626,7 +1354,7 @@ useEffect(() => {
         // Dados da Nota Fiscal
         chave_nota_fiscal: extractNFeKey(xmlDoc) || formData.chave_nota_fiscal || '',
         data_hora_emissao: getXMLValue(xmlDoc, 'dhEmi') || '',
-        numero_nota: getXMLValue(xmlDoc, 'nNF') || '',
+  numero_nota: getXMLValue(xmlDoc, 'ide nNF') || getXMLValue(xmlDoc, 'nNF') || '',
         serie_nota: getXMLValue(xmlDoc, 'serie') || '',
         natureza_operacao: getXMLValue(xmlDoc, 'natOp') || '',
         operacao: sharedFields.operacao || 'Entrada',
@@ -1666,11 +1394,57 @@ useEffect(() => {
 
       setFormData(extractedData);
 
+      // Atualiza notas já existentes no lote com o XML, mesmo quando addToBatch = false
+      try {
+        const matchKey = extractedData.chave_nota_fiscal || extractedData.numero_nota || '';
+        if (matchKey) {
+          setBatchInvoices(prev => prev.map(inv => {
+            const invMatchKey = inv.chave_nota_fiscal || inv.numero_nota || '';
+            if (invMatchKey === matchKey) {
+              return {
+                ...inv,
+                // Preenche campos vazios com dados extraídos
+                numero_nota: inv.numero_nota || extractedData.numero_nota,
+                serie_nota: inv.serie_nota || extractedData.serie_nota,
+                data_hora_emissao: inv.data_hora_emissao || extractedData.data_hora_emissao,
+                emitente_cnpj: inv.emitente_cnpj || extractedData.emitente_cnpj,
+                destinatario_cnpj: inv.destinatario_cnpj || extractedData.destinatario_cnpj,
+                quantidade_volumes: inv.quantidade_volumes || extractedData.quantidade_volumes,
+                valor_nota_fiscal: inv.valor_nota_fiscal || extractedData.valor_nota_fiscal,
+                peso_bruto: inv.peso_bruto || extractedData.peso_bruto,
+                informacoes_complementares: inv.informacoes_complementares || extractedData.informacoes_complementares,
+                // Armazena XML bruto para permitir download
+                xmlContent: xmlText,
+                xml_content: xmlText
+              };
+            }
+            return inv;
+          }));
+
+          // Também atualiza array auxiliar invoiceBatch, se estiver em uso
+          setInvoiceBatch(prev => prev.map(inv => {
+            const invMatchKey = inv.chave_nota_fiscal || inv.numero_nota || '';
+            if (invMatchKey === matchKey) {
+              return {
+                ...inv,
+                xmlContent: xmlText,
+                xml_content: xmlText
+              };
+            }
+            return inv;
+          }));
+        }
+      } catch (e) {
+        console.warn('Falha ao atualizar lote com XML obtido:', e);
+      }
+
       const processedInvoice = {
         ...extractedData,
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         data_processamento: new Date().toISOString(),
         processedAt: new Date().toISOString(),
+        xmlContent: xmlText,
+        xml_content: xmlText,
         operacao: extractedData.operacao || sharedFields.operacao,
         cliente_retira: extractedData.cliente_retira || sharedFields.cliente_retira,
         tipo_frete: extractedData.tipo_frete || sharedFields.tipo_frete,
@@ -1678,51 +1452,53 @@ useEffect(() => {
         status: 'pendente'
       };
 
-      const existingVolumeData = batchVolumeData.find(item => item.numeroNota === extractedData.numero_nota);
-      if (!existingVolumeData) {
-        const quantidadeVolumes = parseInt(extractedData.quantidade_volumes || '1') || 1;
-        const volumes = Array.from({ length: quantidadeVolumes }, (_, index) => ({
-          volume: index + 1,
-          altura: 0,
-          largura: 0,
-          comprimento: 0,
-          m3: 0
-        }));
+      if (addToBatch) {
+        const existingVolumeData = batchVolumeData.find(item => item.numeroNota === extractedData.numero_nota);
+        if (!existingVolumeData) {
+          const quantidadeVolumes = parseInt(extractedData.quantidade_volumes || '1') || 1;
+          const volumes = Array.from({ length: quantidadeVolumes }, (_, index) => ({
+            volume: index + 1,
+            altura: 0,
+            largura: 0,
+            comprimento: 0,
+            m3: 0
+          }));
 
-        const notaVolumeData: NotaVolumeData = {
-          notaId: processedInvoice.id,
-          numeroNota: extractedData.numero_nota,
-          volumes: volumes,
-          totalM3: 0,
-          pesoTotal: parseFloat(extractedData.peso_bruto || '0') || 0
-        };
-        setBatchVolumeData(prev => [...prev, notaVolumeData]);
+          const notaVolumeData: NotaVolumeData = {
+            notaId: processedInvoice.id,
+            numeroNota: extractedData.numero_nota,
+            volumes: volumes,
+            totalM3: 0,
+            pesoTotal: parseFloat(extractedData.peso_bruto || '0') || 0
+          };
+          setBatchVolumeData(prev => [...prev, notaVolumeData]);
+        }
+
+        setBatchInvoices(prev => [...prev, processedInvoice]);
+
+        const existingProcessed = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
+        const updatedProcessed = [...existingProcessed, processedInvoice];
+        localStorage.setItem('processedInvoices', JSON.stringify(updatedProcessed));
+        setProcessedInvoices(updatedProcessed);
+
+        setShowSuccessAnimation(true);
+        setTimeout(() => setShowSuccessAnimation(false), 3000);
+      } else {
+        // preenchimento silencioso do formulário
       }
-
-      setBatchInvoices(prev => [...prev, processedInvoice]);
-
-      const existingProcessed = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
-      const updatedProcessed = [...existingProcessed, processedInvoice];
-      localStorage.setItem('processedInvoices', JSON.stringify(updatedProcessed));
-      setProcessedInvoices(updatedProcessed);
-
-      setShowSuccessAnimation(true);
-      setTimeout(() => setShowSuccessAnimation(false), 3000);
-
-      alert('XML recebido do Meu Danfe e processado com sucesso!');
     } catch (error) {
       console.error('[MeuDanfe] Falha ao processar XML:', error);
-      alert('Erro ao processar o conteúdo XML retornado.');
+      toast({ title: 'Erro ao processar XML', description: 'Falha ao processar conteúdo do Meu Danfe', variant: 'destructive' });
     } finally {
       setIsProcessing(false);
     }
   };
 
   // Fetch XML via backend scraper endpoint and process it
-  const fetchXmlFromMeuDanfeBackend = async (overrideKey?: string) => {
-    const chave = (overrideKey || formData.chave_nota_fiscal || '').trim();
+  const fetchXmlFromMeuDanfeBackend = async (overrideKey?: string, options?: { addToBatch?: boolean }) => {
+    const chave = (overrideKey || formData.chave_nota_fiscal || '').replace(/\D/g, '').trim();
     if (!chave || chave.length !== 44) {
-      alert('Por favor, insira uma chave válida de 44 dígitos');
+      toast({ title: 'Chave inválida', description: 'Informe 44 dígitos', variant: 'destructive' });
       return;
     }
 
@@ -1742,13 +1518,13 @@ useEffect(() => {
       console.log('[Frontend] Resposta do scraper Meu Danfe:', result);
 
       if (result.success && result.xml_content) {
-        await processXMLContent(result.xml_content);
+        await processXMLContent(result.xml_content, { addToBatch: options?.addToBatch ?? true });
       } else {
-        alert(result.error || 'Não foi possível obter o XML via Meu Danfe');
+        toast({ title: 'Erro ao obter XML', description: result.error || 'Não foi possível obter o XML via Meu Danfe', variant: 'destructive' });
       }
     } catch (error) {
       console.error('[MeuDanfe] Erro ao buscar XML via backend:', error);
-      alert('Erro ao conectar ao backend para obter o XML do Meu Danfe.');
+      toast({ title: 'Erro de conexão (backend)', description: 'Falha ao obter XML do Meu Danfe via backend', variant: 'destructive' });
     }
   };
 
@@ -1781,10 +1557,10 @@ useEffect(() => {
   };
 
   // Official Meu Danfe GET to download XML from Customer Area
-  const fetchXmlFromMeuDanfeAPI = async (overrideKey?: string) => {
-    const chave = (overrideKey || formData.chave_nota_fiscal || '').trim();
+  const fetchXmlFromMeuDanfeAPI = async (overrideKey?: string, options?: { addToBatch?: boolean }) => {
+    const chave = (overrideKey || formData.chave_nota_fiscal || '').replace(/\D/g, '').trim();
     if (!chave || chave.length !== 44) {
-      alert('Por favor, insira uma chave válida de 44 dígitos');
+      toast({ title: 'Chave inválida', description: 'Informe 44 dígitos', variant: 'destructive' });
       return;
     }
 
@@ -1807,16 +1583,27 @@ useEffect(() => {
       console.log('[MeuDanfe] GET xml response:', json);
       const xml = extractXmlFromMeuDanfeResponse(json);
       if (xml && xml.includes('<?xml')) {
-        await processXMLContent(xml);
+        await processXMLContent(xml, { addToBatch: options?.addToBatch ?? true });
       } else {
-        alert('Resposta do Meu Danfe não contém XML. Tentando fallback...');
-        // Optional robustness: fallback ao backend scraper
-        await fetchXmlFromMeuDanfeBackend(chave);
+        toast({ title: 'Sem XML na resposta', description: 'Meu Danfe não retornou XML', variant: 'destructive' });
       }
     } catch (error) {
       console.error('[MeuDanfe] Erro no GET xml:', error);
-      alert('Erro ao baixar o XML via Meu Danfe. Tentando fallback...');
-      await fetchXmlFromMeuDanfeBackend(chave);
+      toast({ title: 'Erro ao baixar XML', description: 'Falha na API Meu Danfe', variant: 'destructive' });
+    }
+  };
+
+  // Fluxo automático: busca XML e adiciona ao lote, sem popups
+  const autoFetchAndAddToBatch = async (key: string) => {
+    try {
+      setIsApiLoading(true);
+      handleInputChange('chave_nota_fiscal', key);
+      // Se houver uma nota atual no formulário, mover para o mockup antes de preencher a nova
+      enqueueCurrentInvoiceToBatch();
+      // Adicionar a NFe via Meu Danfe e baixar o XML, preenchendo apenas o formulário
+      await fetchNFeWithMeuDanfe({ addToBatch: false });
+    } finally {
+      setIsApiLoading(false);
     }
   };
 
@@ -2013,13 +1800,15 @@ useEffect(() => {
       console.log('✅ Perfect 44-digit NFe key detected:', codeString);
       
       triggerHapticFeedback();
-      stopQuaggaScanner();
-      setIsCameraOpen(false);
-      handleInputChange('chave_nota_fiscal', codeString);
-      alert('✅ Código NFe detectado e preenchido automaticamente!');
-      
-      if (window.confirm('Deseja buscar automaticamente os dados da NFe?')) {
-        setTimeout(() => fetchXmlWithNSDocs(), 500);
+      if (autoAddToBatch) {
+        // Não parar o scanner: adiciona automaticamente ao lote
+        void autoFetchAndAddToBatch(codeString);
+      } else {
+        // Preenche o campo e mantém controle manual
+        handleInputChange('chave_nota_fiscal', codeString);
+        toast({ title: 'Código NFe detectado', description: codeString });
+        // Buscar automaticamente na API Meu Danfe para preencher o formulário
+        void fetchNFeWithMeuDanfe({ addToBatch: false });
       }
       return;
     }
@@ -2037,13 +1826,13 @@ useEffect(() => {
       console.log('✅ NFe key extracted from longer code:', extractedKey);
       
       triggerHapticFeedback();
-      stopQuaggaScanner();
-      setIsCameraOpen(false);
-      handleInputChange('chave_nota_fiscal', extractedKey);
-      alert('✅ Chave NFe extraída do código e preenchida automaticamente!');
-      
-      if (window.confirm('Deseja buscar automaticamente os dados da NFe?')) {
-        setTimeout(() => fetchXmlWithNSDocs(), 500);
+      if (autoAddToBatch) {
+        void autoFetchAndAddToBatch(extractedKey);
+      } else {
+        handleInputChange('chave_nota_fiscal', extractedKey);
+        toast({ title: 'Chave NFe extraída', description: extractedKey });
+        // Buscar automaticamente na API Meu Danfe para preencher o formulário
+        void fetchNFeWithMeuDanfe({ addToBatch: false });
       }
       return;
     }
@@ -2262,17 +2051,20 @@ useEffect(() => {
               // Trigger haptic feedback for successful scan
               triggerHapticFeedback();
               
-              stopContinuousScanning();
-              setIsCameraOpen(false);
-              handleInputChange('chave_nota_fiscal', codeString);
-              
-              alert('✅ Código detectado e preenchido automaticamente!');
-              
-              // Optionally trigger automatic XML fetch
-              if (window.confirm('Deseja buscar automaticamente os dados da NFe com este código?')) {
-                setTimeout(() => {
-                  fetchXmlWithNSDocs();
-                }, 500);
+              if (batchMode) {
+                addScannedKey(codeString);
+                // permanece escaneando continuamente
+              } else {
+                stopContinuousScanning();
+                setIsCameraOpen(false);
+                handleInputChange('chave_nota_fiscal', codeString);
+                alert('✅ Código detectado e preenchido automaticamente!');
+                // Optionally trigger automatic XML fetch
+                if (window.confirm('Deseja buscar automaticamente os dados da NFe com este código?')) {
+                  setTimeout(() => {
+                    fetchXmlFromMeuDanfeAPI(codeString);
+                  }, 500);
+                }
               }
             } else if (codeString.length > 10) {
               console.log('🔍 Searching for NFe key in longer code:', codeString);
@@ -2285,15 +2077,18 @@ useEffect(() => {
                 // Trigger haptic feedback for successful extraction
                 triggerHapticFeedback();
                 
-                stopContinuousScanning();
-                setIsCameraOpen(false);
-                handleInputChange('chave_nota_fiscal', extractedKey);
-                alert('✅ Chave NFe extraída do código e preenchida automaticamente!');
-                
-                if (window.confirm('Deseja buscar automaticamente os dados da NFe?')) {
-                  setTimeout(() => {
-                    fetchXmlWithNSDocs();
-                  }, 500);
+                if (batchMode) {
+                  addScannedKey(extractedKey);
+                } else {
+                  stopContinuousScanning();
+                  setIsCameraOpen(false);
+                  handleInputChange('chave_nota_fiscal', extractedKey);
+                  alert('✅ Chave NFe extraída do código e preenchida automaticamente!');
+                  if (window.confirm('Deseja buscar automaticamente os dados da NFe?')) {
+                    setTimeout(() => {
+                      fetchXmlFromMeuDanfeAPI(extractedKey);
+                    }, 500);
+                  }
                 }
               } else {
                 console.log('❌ No 44-digit sequence found in code:', codeString);
@@ -2427,7 +2222,7 @@ useEffect(() => {
               
               handleInputChange('chave_nota_fiscal', codeString);
               setIsCameraOpen(false);
-              alert('✅ Código lido com sucesso! Chave NFe inserida automaticamente.');
+              // Sucesso silencioso ao inserir chave lida
             } else {
               const nfeMatch = codeString.match(/\d{44}/);
               if (nfeMatch) {
@@ -2438,19 +2233,19 @@ useEffect(() => {
                 
                 handleInputChange('chave_nota_fiscal', nfeMatch[0]);
                 setIsCameraOpen(false);
-                alert('✅ Chave NFe extraída e inserida automaticamente!');
+                // Sucesso silencioso ao extrair e inserir chave
               } else {
                 console.log('❌ No valid NFe key found in detected code');
-                alert('Código detectado: ' + codeString.substring(0, 30) + '... mas não contém chave NFe válida.');
+                // Silencioso: não exibir popup
               }
             }
           } else {
             console.log('❌ No code detected in manual capture');
-            alert('Não foi possível detectar código. Verifique o posicionamento e iluminação, depois tente novamente.');
+            // Silencioso: não exibir popup
           }
         } catch (error) {
           setIsScanning(false);
-          alert('Erro ao processar imagem.');
+          // Silencioso: não exibir popup
         }
       }
     }
@@ -2499,36 +2294,54 @@ useEffect(() => {
         }
       }
       
-      // Save to localStorage for transfer back to main system
-      localStorage.setItem('editedNotaFiscal', JSON.stringify(editedNota));
-      
-      // Simulate API call delay then redirect back
-      setTimeout(() => {
-        setShowSuccessAnimation(false);
-        alert('NFe editada com sucesso! Redirecionando de volta...');
-        setLocation('/coletas/nova-ordem');
-      }, 2000);
+      // Persiste no Supabase (update se id disponível; senão, cria)
+      (async () => {
+        try {
+          const payload = mapFormToSchema(editedNota as any);
+          if (editingNotaId) {
+            try {
+              await supabaseUpdate(String(editingNotaId), payload);
+            } catch {
+              await supabaseCreate(payload);
+            }
+          } else {
+            await supabaseCreate(payload);
+          }
+          setShowSuccessAnimation(false);
+          toast({ title: 'Edição salva', description: 'Nota fiscal salva no banco de dados.' });
+          setLocation('/coletas/nova-ordem');
+        } catch (e: any) {
+          setShowSuccessAnimation(false);
+          toast({ title: 'Erro ao salvar edição', description: e?.message || 'Falha ao salvar no banco', variant: 'destructive' });
+        }
+      })();
       
     } else {
       console.log('Salvando nova nota fiscal:', formData);
       
-      // Save to localStorage for search functionality
-      const savedInvoices = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
-      const newInvoice = {
-        ...formData,
-        id: `NF-${Date.now()}`,
-        data_processamento: new Date().toISOString(),
-        status: 'processada'
-      };
-      savedInvoices.push(newInvoice);
-      localStorage.setItem('processedInvoices', JSON.stringify(savedInvoices));
-      setProcessedInvoices(savedInvoices);
-      
-      // Simulate API call delay
-      setTimeout(() => {
-        setShowSuccessAnimation(false);
-        handleClearForm();
-      }, 2000);
+      // Salva no Supabase e mantém busca local
+      (async () => {
+        try {
+          const payload = mapFormToSchema(formData);
+          const inserted = await supabaseCreate(payload);
+          const savedInvoices = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
+          const newInvoice = {
+            ...formData,
+            id: inserted?.id || `NF-${Date.now()}`,
+            data_processamento: new Date().toISOString(),
+            status: 'processada'
+          };
+          const updated = [...savedInvoices, newInvoice];
+          localStorage.setItem('processedInvoices', JSON.stringify(updated));
+          setProcessedInvoices(updated);
+          setShowSuccessAnimation(false);
+          handleClearForm();
+          toast({ title: 'Nota salva', description: 'Nota fiscal salva no banco e listada para consulta.' });
+        } catch (e: any) {
+          setShowSuccessAnimation(false);
+          toast({ title: 'Erro ao salvar', description: e?.message || 'Falha ao salvar nota.', variant: 'destructive' });
+        }
+      })();
     }
   };
 
@@ -2584,10 +2397,135 @@ useEffect(() => {
   // Volume/Cubage state management
 
   const [batchVolumeData, setBatchVolumeData] = useState<NotaVolumeData[]>([]);
-  const [showVolumeModal, setShowVolumeModal] = useState(false);
+    const [showVolumeModal, setShowVolumeModal] = useState(false);
+    // Ajuda contextual: colapsada por padrão
+    const [showXmlBatchHelp, setShowXmlBatchHelp] = useState(false);
+    const [showApiHelp, setShowApiHelp] = useState(false);
   const [currentVolumeNota, setCurrentVolumeNota] = useState<string>('');
 
   const [consultaViewMode, setConsultaViewMode] = useState<'list' | 'cards'>('list');
+
+  // Submissão para Supabase
+  const { handleSubmit: supabaseCreate, handleUpdate: supabaseUpdate } = useFormSubmission();
+
+  // Mapeia dados do formulário atual para o schema do hook
+  const mapFormToSchema = (data: typeof formData) => {
+    return {
+      numeroNF: data.numero_nota || '',
+      serieNF: data.serie_nota || '',
+      chaveNF: data.chave_nota_fiscal || '',
+      valorTotal: data.valor_nota_fiscal || '',
+      pesoBruto: data.peso_bruto || '',
+      quantidadeVolumes: data.quantidade_volumes || '',
+      dataEmissao: data.data_hora_emissao || '',
+      tipoOperacao: data.natureza_operacao || data.operacao || '',
+
+      emitenteCnpj: data.emitente_cnpj || '',
+      emitenteRazaoSocial: data.emitente_razao_social || '',
+      emitenteTelefone: data.emitente_telefone || '',
+      emitenteUf: data.emitente_uf || '',
+      emitenteCidade: data.emitente_cidade || '',
+      emitenteBairro: data.emitente_bairro || '',
+      emitenteEndereco: data.emitente_endereco || '',
+      emitenteNumero: data.emitente_numero || '',
+      emitenteCep: data.emitente_cep || '',
+
+      destinatarioCnpj: data.destinatario_cnpj || '',
+      destinatarioRazaoSocial: data.destinatario_razao_social || '',
+      destinatarioTelefone: data.destinatario_telefone || '',
+      destinatarioUf: data.destinatario_uf || '',
+      destinatarioCidade: data.destinatario_cidade || '',
+      destinatarioBairro: data.destinatario_bairro || '',
+      destinatarioEndereco: data.destinatario_endereco || '',
+      destinatarioNumero: data.destinatario_numero || '',
+      destinatarioCep: data.destinatario_cep || '',
+
+      numeroPedido: data.numero_pedido || '',
+      informacoesComplementares: data.informacoes_complementares || '',
+      fobCif: data.tipo_frete || '',
+
+      quimico: 'nao',
+      fracionado: 'nao',
+      observacoes: ''
+    } as any;
+  };
+
+  // Mapeia item do lote para o schema
+  const mapInvoiceToSchema = (invoice: any) => {
+    return {
+      numeroNF: invoice.numero_nota || '',
+      serieNF: invoice.serie_nota || '',
+      chaveNF: invoice.chave_nota_fiscal || '',
+      valorTotal: invoice.valor_nota_fiscal || '',
+      pesoBruto: invoice.peso_bruto || '',
+      quantidadeVolumes: invoice.quantidade_volumes || invoice.volumes_totais || '',
+      dataEmissao: invoice.data_hora_emissao || '',
+      tipoOperacao: invoice.natureza_operacao || invoice.operacao || '',
+
+      emitenteCnpj: invoice.emitente_cnpj || '',
+      emitenteRazaoSocial: invoice.emitente_razao_social || '',
+      emitenteTelefone: invoice.emitente_telefone || '',
+      emitenteUf: invoice.emitente_uf || '',
+      emitenteCidade: invoice.emitente_cidade || '',
+      emitenteBairro: invoice.emitente_bairro || '',
+      emitenteEndereco: invoice.emitente_endereco || '',
+      emitenteNumero: invoice.emitente_numero || '',
+      emitenteCep: invoice.emitente_cep || '',
+
+      destinatarioCnpj: invoice.destinatario_cnpj || '',
+      destinatarioRazaoSocial: invoice.destinatario_razao_social || '',
+      destinatarioTelefone: invoice.destinatario_telefone || '',
+      destinatarioUf: invoice.destinatario_uf || '',
+      destinatarioCidade: invoice.destinatario_cidade || '',
+      destinatarioBairro: invoice.destinatario_bairro || '',
+      destinatarioEndereco: invoice.destinatario_endereco || '',
+      destinatarioNumero: invoice.destinatario_numero || '',
+      destinatarioCep: invoice.destinatario_cep || '',
+
+      numeroPedido: invoice.numero_pedido || '',
+      informacoesComplementares: invoice.informacoes_complementares || '',
+      fobCif: invoice.tipo_frete || '',
+
+      quimico: 'nao',
+      fracionado: 'nao'
+    } as any;
+  };
+
+  // Salva uma nota do lote no Supabase e atualiza status
+  const saveInvoiceToSupabase = async (invoice: any) => {
+    const key = invoice.numero_nota || invoice.chave_nota_fiscal || `NF-${Date.now()}`;
+    setBatchProcessingStatus(prev => ({ ...prev, [key]: 'processing' }));
+    try {
+      const payload = mapInvoiceToSchema(invoice);
+      const result = await supabaseCreate(payload);
+      setBatchInvoices(prev => prev.map(inv => {
+        const match = (inv.numero_nota || inv.chave_nota_fiscal) === (invoice.numero_nota || invoice.chave_nota_fiscal);
+        return match ? { ...inv, supabase_id: result?.id } : inv;
+      }));
+      setBatchProcessingStatus(prev => ({ ...prev, [key]: 'completed' }));
+      toast({ title: 'Nota salva', description: `NF ${invoice.numero_nota} salva no banco.` });
+    } catch (err: any) {
+      setBatchProcessingStatus(prev => ({ ...prev, [key]: 'error' }));
+      toast({ title: 'Erro ao salvar', description: err?.message || 'Falha ao salvar nota', variant: 'destructive' });
+    }
+  };
+
+  // Salva todo o lote
+  const saveBatchToSupabase = async () => {
+    if (!batchInvoices || batchInvoices.length === 0) {
+      alert('Nenhuma nota no lote para salvar.');
+      return;
+    }
+    const initialStatus: any = {};
+    batchInvoices.forEach(inv => {
+      const key = inv.numero_nota || inv.chave_nota_fiscal || `NF-${Date.now()}`;
+      initialStatus[key] = 'pending';
+    });
+    setBatchProcessingStatus(initialStatus);
+    for (const inv of batchInvoices) {
+      await saveInvoiceToSupabase(inv);
+    }
+  };
 
   // Volume calculation functions
   const openVolumeModal = (numeroNota: string) => {
@@ -2628,6 +2566,61 @@ useEffect(() => {
         description: `NFe ${numeroNota} removida do extrato de volumes`,
         variant: "default"
       });
+    }
+  };
+
+  // Download XML for a single invoice
+  const downloadXmlForInvoice = (invoice: any) => {
+    try {
+      const xml: string | undefined = invoice?.xmlContent || invoice?.xml_content;
+      if (!xml || typeof xml !== 'string' || !xml.includes('<')) {
+        toast({ title: 'XML não disponível', description: 'Esta nota não possui XML carregado.', variant: 'destructive' });
+        return;
+      }
+      const safeName = (invoice.numero_nota || invoice.chave_nota_fiscal || 'nota').toString().replace(/[^\w\-]/g, '_');
+      const fileName = `NFe-${safeName}.xml`;
+      const blob = new Blob([xml], { type: 'application/xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: 'XML baixado', description: `Arquivo ${fileName} gerado com sucesso.` });
+    } catch (err) {
+      console.error('Erro ao baixar XML individual:', err);
+      toast({ title: 'Erro ao baixar XML', description: 'Falha ao gerar o arquivo XML.', variant: 'destructive' });
+    }
+  };
+
+  // Download XML for all invoices in batch (multiple files)
+  const downloadXmlForBatch = () => {
+    try {
+      const invoicesWithXml = batchInvoices.filter(inv => (inv.xmlContent && typeof inv.xmlContent === 'string') || (inv.xml_content && typeof inv.xml_content === 'string'));
+      if (invoicesWithXml.length === 0) {
+        toast({ title: 'Sem XML no lote', description: 'Nenhuma nota do lote possui XML carregado.', variant: 'destructive' });
+        return;
+      }
+      invoicesWithXml.forEach((inv) => {
+        const xml = inv.xmlContent || inv.xml_content;
+        const safeName = (inv.numero_nota || inv.chave_nota_fiscal || 'nota').toString().replace(/[^\w\-]/g, '_');
+        const fileName = `NFe-${safeName}.xml`;
+        const blob = new Blob([xml], { type: 'application/xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+      toast({ title: 'XMLs baixados', description: `${invoicesWithXml.length} arquivo(s) XML iniciados para download.` });
+    } catch (err) {
+      console.error('Erro ao baixar XML em lote:', err);
+      toast({ title: 'Erro no lote', description: 'Falha ao baixar XMLs do lote.', variant: 'destructive' });
     }
   };
 
@@ -2963,7 +2956,7 @@ useEffect(() => {
                           </span>
                           <div className="text-xs text-gray-500">
                             {invoice.source === 'manual' ? 'Manual' : 
-                             invoice.source === 'nsdocs_api' ? 'NSDocs API' : 'XML'}
+                             (typeof invoice.source === 'string' && invoice.source.includes('meudanfe')) ? 'Meu Danfe' : 'XML'}
                           </div>
                         </div>
                         <Button
@@ -2986,7 +2979,15 @@ useEffect(() => {
                       </span>
                     </div>
                     
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="default"
+                        onClick={() => goToNextInvoice()}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <ChevronRight className="h-4 w-4 mr-2" />
+                        Próxima
+                      </Button>
                       <Button
                         variant="outline"
                         onClick={() => {
@@ -3005,21 +3006,42 @@ useEffect(() => {
 
             {/* Enhanced XML Import Section for Batch Processing */}
             <div className="space-y-4">
-              {/* Ajuda contextual para upload XML */}
-              <div className="mb-4">
-                <InlineHelp
-                  title="Dica: Processamento em Lote de XML"
-                  description="Acelere seu trabalho processando múltiplos arquivos XML de uma só vez"
-                  videoUrl="https://www.youtube.com/watch?v=demo-xml-batch"
-                  tips={[
-                    "Selecione vários arquivos XML simultaneamente para processamento em lote",
-                    "Todos os campos compartilhados serão aplicados automaticamente às notas",
-                    "Arquivos com erro são ignorados, mantendo os válidos no lote"
-                  ]}
-                  variant="tip"
-                  dismissible={true}
-                />
+              {/* Cabeçalho discreto com botão de ajuda */}
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium text-yellow-800">Dica: Processamento em Lote de XML</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowXmlBatchHelp(v => !v)}
+                        className="h-6 w-6"
+                        aria-label="Ajuda sobre processamento em lote de XML"
+                      >
+                        <HelpCircle className="h-4 w-4 text-yellow-700" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Ajuda</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
+              {showXmlBatchHelp && (
+                <div className="mb-4">
+                  <InlineHelp
+                    title="Dica: Processamento em Lote de XML"
+                    description="Acelere seu trabalho processando múltiplos arquivos XML de uma só vez"
+                    videoUrl="https://www.youtube.com/watch?v=demo-xml-batch"
+                    tips={[
+                      "Selecione vários arquivos XML simultaneamente para processamento em lote",
+                      "Todos os campos compartilhados serão aplicados automaticamente às notas",
+                      "Arquivos com erro são ignorados, mantendo os válidos no lote"
+                    ]}
+                    variant="tip"
+                    dismissible={true}
+                  />
+                </div>
+              )}
 
               {/* Instructions */}
               <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
@@ -3101,27 +3123,69 @@ useEffect(() => {
 
             {/* Comprehensive Form Layout */}
             <div className="space-y-6">
-              {/* Ajuda contextual para busca por API */}
-              <div className="mb-4">
-                <InlineHelp
-                  title="Busca Automática por API"
-                  description="Importe dados da NFe automaticamente usando apenas a chave de acesso"
-                  videoUrl="https://www.youtube.com/watch?v=demo-api-search"
-                  tips={[
-                    "Cole a chave de 44 dígitos diretamente do e-mail ou DANFE",
-                    "Para múltiplas notas, separe as chaves com vírgula",
-                    "Use o scanner de código de barras para captura automática",
-                    "API oficial da Receita Federal - dados sempre atualizados"
-                  ]}
-                  variant="tip"
-                  dismissible={true}
-                />
-              </div>
+              {/* Ajuda contextual para busca por API - colapsada por padrão */}
+              {showApiHelp && (
+                <div className="mb-2">
+                  <InlineHelp
+                    title="Busca Automática por API"
+                    description="Importe dados da NFe automaticamente usando apenas a chave de acesso"
+                    videoUrl="https://www.youtube.com/watch?v=demo-api-search"
+                    tips={[
+                      "Cole a chave de 44 dígitos diretamente do e-mail ou DANFE",
+                      "Para múltiplas notas, separe as chaves com vírgula",
+                      "Use o scanner de código de barras para captura automática",
+                      "API oficial da Receita Federal - dados sempre atualizados"
+                    ]}
+                    variant="tip"
+                    dismissible={true}
+                  />
+                </div>
+              )}
 
               {/* Chave da Nota Fiscal - Otimizada */}
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label htmlFor="chave_nota_fiscal" className="text-sm font-medium">Chave da Nota Fiscal (ou múltiplas chaves separadas por vírgula)</Label>
+                  <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="chave_nota_fiscal" className="text-sm font-medium">Chave da Nota Fiscal</Label>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="auto_add_to_batch"
+                          checked={autoAddToBatch}
+                          onCheckedChange={(v) => setAutoAddToBatch(!!v)}
+                        />
+                        <Label htmlFor="auto_add_to_batch" className="text-xs text-gray-700">Auto adicionar ao lote</Label>
+                      </div>
+                      {/* Botão de busca individual na API Meu Danfe */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fetchNFeWithMeuDanfe({ addToBatch: false })}
+            disabled={isApiLoading || !((formData.chave_nota_fiscal || '').replace(/\D/g, '').trim().length === 44)}
+                        className="text-xs"
+                        title="Buscar pela chave na API Meu Danfe"
+                      >
+                        Buscar Meu Danfe
+                      </Button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setShowApiHelp(v => !v)}
+                              className="h-6 w-6"
+                              aria-label="Ajuda de busca automática por API"
+                            >
+                              <HelpCircle className="h-4 w-4 text-yellow-700" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Ajuda</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
                   
                   {/* Input em linha separada para melhor legibilidade */}
                   <div className="w-full">
@@ -3129,94 +3193,15 @@ useEffect(() => {
                       id="chave_nota_fiscal"
                       value={formData.chave_nota_fiscal}
                       onChange={(e) => handleInputChange('chave_nota_fiscal', e.target.value)}
-                      placeholder="Digite uma ou múltiplas chaves de 44 dígitos separadas por vírgula"
+                      onPaste={handlePasteNFeKey}
+                      onKeyDown={handleKeyDownNFeInput}
+                      placeholder="Digite a chave de 44 dígitos"
                       className={`w-full font-mono text-sm px-3 py-2 ${formErrors.chave_nota_fiscal ? 'border-red-300 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md`}
                     />
                   </div>
                   
-                  {/* Botões de busca em linha separada com layout compacto */}
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const keys = formData.chave_nota_fiscal.split(',').map(key => key.trim()).filter(key => key.length === 44);
-                        if (keys.length === 1) {
-                          // Nova integração: Meu Danfe
-                          fetchNFeWithMeuDanfe();
-                        } else if (keys.length > 1) {
-                          // Mantém fluxo existente para múltiplas chaves
-                          processBatchNSDocsKeys(keys);
-                        } else {
-                          alert('Por favor, insira pelo menos uma chave válida de 44 dígitos');
-                        }
-                      }}
-                      disabled={isApiLoading || !formData.chave_nota_fiscal}
-                      className="px-3 py-1.5 bg-[#0098DA] border-[#0098DA] text-white hover:bg-blue-600 disabled:opacity-50 text-xs"
-                    >
-                      {isApiLoading ? (
-                        <>
-                          <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                          Buscando...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-3 w-3 mr-1" />
-                          Buscar NFe
-                        </>
-                      )}
-                    </Button>
-                    
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (formData.chave_nota_fiscal.length === 44) {
-                          fetchXmlWithLogisticaInfo();
-                        } else {
-                          alert('Por favor, insira uma chave válida de 44 dígitos');
-                        }
-                      }}
-                      disabled={isApiLoading || !formData.chave_nota_fiscal}
-                      className="px-3 py-1.5 bg-orange-600 border-orange-600 text-white hover:bg-orange-700 disabled:opacity-50 text-xs"
-                    >
-                      {isApiLoading ? (
-                        <>
-                          <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                          Buscando...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-3 w-3 mr-1" />
-                          BuscarNfe Log.
-                        </>
-                      )}
-                    </Button>
-                    
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={runNSDocsDiagnostics}
-                      disabled={isApiLoading}
-                      className="px-2 py-1.5 bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 disabled:opacity-50 text-xs"
-                      title="Executar diagnóstico de conectividade NSDocs"
-                    >
-                      {isApiLoading ? (
-                        <>
-                          <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                          Testando...
-                        </>
-                      ) : (
-                        <>
-                          <AlertCircle className="h-3 w-3 mr-1" />
-                          Diagnóstico
-                        </>
-                      )}
-                    </Button>
-                    
+                  {/* Ações simplificadas: manter apenas botão de câmera */}
+                  <div className="flex gap-2 pt-1">
                     <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
                       <DialogTrigger asChild>
                         <Button
@@ -3500,9 +3485,9 @@ useEffect(() => {
                                   if (manualInput && manualInput.length === 44 && /^\d+$/.test(manualInput)) {
                                     handleInputChange('chave_nota_fiscal', manualInput);
                                     setIsCameraOpen(false);
-                                    alert('Chave NFe inserida com sucesso!');
+                                    // Sucesso silencioso na entrada manual
                                   } else if (manualInput) {
-                                    alert('Chave inválida. Deve conter exatamente 44 dígitos.');
+                                    // Silencioso: não exibir popup de erro
                                   }
                                 }}
                                 className="text-gray-600 hover:text-gray-800"
@@ -3521,6 +3506,11 @@ useEffect(() => {
                       </Dialog>
                     </div>
                   </div>
+                  {batchMode && scannedKeys.length > 0 && (
+                    <div className="mt-2 text-xs text-green-700">
+                      {scannedKeys.length} chave(s) no lote: {scannedKeys.slice(-3).join(', ')}{scannedKeys.length > 3 ? '...' : ''}
+                    </div>
+                  )}
                   <p className="text-xs text-gray-500">
                     Insira a chave completa (44 dígitos) e clique em "Importar NFe" para buscar e processar o XML automaticamente
                   </p>
@@ -3908,16 +3898,8 @@ useEffect(() => {
               </div>
             </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons (simplificado: sem "Adicionar ao Lote") */}
               <div className="flex gap-3 pt-6 border-t">
-                <Button 
-                  onClick={addInvoiceToBatch} 
-                  className="flex-1 btn-micro btn-ripple scale-click bg-blue-600 hover:bg-blue-700"
-                  disabled={showSuccessAnimation || !formData.chave_nota_fiscal}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar ao Lote
-                </Button>
                 <Button 
                   onClick={handleSubmit} 
                   variant="outline"
@@ -4076,7 +4058,9 @@ useEffect(() => {
                           >
                             <div className="flex items-center gap-1">
                               <Package className="h-3 w-3 text-blue-600" />
-                              <span className="font-medium">{invoice.numero_nota}</span>
+                              <span className="font-medium">
+                                {invoice.numero_nota || (invoice as any).numero || (invoice as any).numero_nf || (invoice as any).notaFiscal || 'N/A'}
+                              </span>
                             </div>
                             
                             <div>
@@ -4123,6 +4107,25 @@ useEffect(() => {
                                 Informar Dimensões
                               </Button>
                               <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => downloadXmlForInvoice(invoice)}
+                                className="h-6 px-2 text-xs"
+                                title="Baixar XML desta nota"
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                Baixar XML
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => saveInvoiceToSupabase(invoice)}
+                                className="h-6 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                                title="Salvar esta nota no banco de dados"
+                              >
+                                Salvar no BD
+                              </Button>
+                              <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => removeVolumeData(invoice.numero_nota)}
@@ -4165,12 +4168,33 @@ useEffect(() => {
                         <Button
                           variant="default"
                           size="sm"
+                          onClick={saveBatchToSupabase}
+                          className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
+                          disabled={batchInvoices.length === 0}
+                        >
+                          <Save className="h-3 w-3 mr-1" />
+                          Salvar Lote no BD
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
                           onClick={handleCriarOrdemColeta}
                           className="h-8 bg-[#0098DA] hover:bg-blue-600 text-white"
                           disabled={batchInvoices.length === 0}
                         >
                           <Truck className="h-3 w-3 mr-1" />
                           Criar Ordem
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={downloadXmlForBatch}
+                          className="h-8"
+                          disabled={batchInvoices.length === 0}
+                          title="Baixar XML de todas as notas do lote"
+                        >
+                          <Download className="h-3 w-3 mr-1" />
+                          Baixar XML (Lote)
                         </Button>
                         <Button
                           variant="outline"
@@ -4369,8 +4393,8 @@ useEffect(() => {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                setSelectedInvoice(invoice);
-                                setEditDialogOpen(true);
+                                const idx = batchInvoices.findIndex(inv => (inv.id || inv.chave_nota_fiscal) === (invoice.id || invoice.chave_nota_fiscal));
+                                handleEditInvoice(invoice, idx >= 0 ? idx : 0);
                               }}
                               className="h-6 px-2 text-xs"
                             >
@@ -4469,8 +4493,8 @@ useEffect(() => {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              setSelectedInvoice(invoice);
-                              setEditDialogOpen(true);
+                              const idx = batchInvoices.findIndex(inv => (inv.id || inv.chave_nota_fiscal) === (invoice.id || invoice.chave_nota_fiscal));
+                              handleEditInvoice(invoice, idx >= 0 ? idx : 0);
                             }}
                             className="h-7 px-2 text-xs"
                           >
@@ -4511,3 +4535,81 @@ useEffect(() => {
 };
 
 export default NotasFiscaisEntrada;
+  // Adiciona chave escaneada ao lote
+  const addScannedKey = (key: string) => {
+    const cleaned = key.replace(/\D/g, '');
+    if (cleaned.length !== 44) {
+      return;
+    }
+    setScannedKeys(prev => (prev.includes(cleaned) ? prev : [...prev, cleaned]));
+    setFormData(prev => {
+      const existing = (prev.chave_nota_fiscal || '')
+        .split(',')
+        .map(k => k.trim())
+        .filter(k => k.length === 44);
+      const nextValue = [...new Set([...existing, cleaned])].join(',');
+      return { ...prev, chave_nota_fiscal: nextValue };
+    });
+    toast({
+      title: 'Chave adicionada ao lote',
+      description: cleaned,
+    });
+  };
+
+  // Preenche o formulário com a nota selecionada
+  const applyInvoiceToForm = (nota: any) => {
+    setFormData({
+      chave_nota_fiscal: nota.chave_nota_fiscal || nota.chaveNF || '',
+      data_hora_emissao: nota.data_hora_emissao || nota.data_emissao || '',
+      numero_nota: nota.numero_nota || nota.numero || '',
+      serie_nota: nota.serie_nota || nota.serie || '',
+      natureza_operacao: nota.natureza_operacao || '',
+      operacao: nota.operacao || sharedFields.operacao || '',
+      cliente_retira: nota.cliente_retira || sharedFields.cliente_retira || '',
+      emitente_cnpj: nota.emitente_cnpj || '',
+      emitente_razao_social: nota.emitente_razao_social || '',
+      emitente_telefone: nota.emitente_telefone || '',
+      emitente_uf: nota.emitente_uf || '',
+      emitente_cidade: nota.emitente_cidade || '',
+      emitente_bairro: nota.emitente_bairro || '',
+      emitente_endereco: nota.emitente_endereco || '',
+      emitente_numero: nota.emitente_numero || '',
+      emitente_cep: nota.emitente_cep || '',
+      destinatario_cnpj: nota.destinatario_cnpj || '',
+      destinatario_razao_social: nota.destinatario_razao_social || '',
+      destinatario_telefone: nota.destinatario_telefone || '',
+      destinatario_uf: nota.destinatario_uf || '',
+      destinatario_cidade: nota.destinatario_cidade || '',
+      destinatario_bairro: nota.destinatario_bairro || '',
+      destinatario_endereco: nota.destinatario_endereco || '',
+      destinatario_numero: nota.destinatario_numero || '',
+      destinatario_cep: nota.destinatario_cep || '',
+      quantidade_volumes: String(nota.quantidade_volumes || ''),
+      valor_nota_fiscal: String(nota.valor_nota_fiscal || ''),
+      peso_bruto: String(nota.peso_bruto || ''),
+      informacoes_complementares: nota.informacoes_complementares || '',
+      numero_pedido: nota.numero_pedido || '',
+      tipo_frete: nota.tipo_frete || sharedFields.tipo_frete || 'CIF',
+      custo_extra: nota.custo_extra || sharedFields.custo_extra || ''
+    });
+    setActiveTab('cadastro');
+  };
+
+  const handleEditInvoice = (nota: any, index: number) => {
+    setCurrentInvoiceIndex(index);
+    applyInvoiceToForm(nota);
+    toast({ title: 'Nota carregada para edição', description: `NF ${nota.numero_nota || nota.numero}` });
+  };
+
+  const goToNextInvoice = () => {
+    if (invoiceBatch.length === 0) {
+      toast({ title: 'Lote vazio', description: 'Nenhuma nota processada.' });
+      return;
+    }
+    const nextIndex = Math.min(currentInvoiceIndex + 1, invoiceBatch.length - 1);
+    if (nextIndex === currentInvoiceIndex) {
+      toast({ title: 'Fim do lote', description: 'Não há próxima nota.' });
+      return;
+    }
+    handleEditInvoice(invoiceBatch[nextIndex], nextIndex);
+  };

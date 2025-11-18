@@ -1,6 +1,6 @@
 
-import { supabase } from "@/integrations/supabase/client";
 import { SignUpCredentials } from "./authTypes";
+import authService from "@/services/authService";
 
 /**
  * Serviço para operações de registro
@@ -10,31 +10,19 @@ const registrationService = {
    * Cadastra um novo usuário
    */
   async signUp(credentials: SignUpCredentials) {
-    console.log('RegistrationService: Cadastrando usuário com:', credentials.email);
-    
-    const { data, error } = await supabase.auth.signUp({
-      email: credentials.email,
-      password: credentials.password,
-      options: {
-        data: {
-          nome: credentials.nome,
-          telefone: credentials.telefone,
-          cnpj: credentials.cnpj, // Importante: adiciona o CNPJ aos metadados para vinculação à empresa
-          funcao: credentials.funcao || 'operador'
-        },
-        emailRedirectTo: `${window.location.origin}/auth?confirmed=true`
-      }
-    });
+    console.log('RegistrationService: Cadastrando usuário via backend com:', credentials.email);
+    const response = await authService.signUp(
+      credentials.email,
+      credentials.password,
+      credentials.nome,
+      credentials.telefone,
+      credentials.cnpj,
+      credentials.tipo_usuario ?? 'transportador',
+      credentials.razao_social,
+      credentials.operador_logistico_cnpj
+    );
 
-    if (error) {
-      console.error('RegistrationService: Erro ao cadastrar:', error);
-      throw error;
-    }
-
-    return {
-      user: data.user,
-      session: data.session
-    };
+    return response;
   },
 };
 

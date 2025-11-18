@@ -60,22 +60,24 @@ class AuthService {
     return data;
   }
 
-  async signUp(email: string, password: string, nome: string, telefone?: string, cnpj?: string): Promise<AuthResponse> {
-    const response = await this.request('/signup', {
+  async signUp(
+    email: string,
+    password: string,
+    nome: string,
+    telefone?: string,
+    cnpj?: string,
+    tipo_usuario: 'transportador' | 'cliente' | 'fornecedor' | 'super_admin' = 'transportador',
+    razao_social?: string,
+    operador_logistico_cnpj?: string
+  ): Promise<AuthResponse> {
+    const response = await this.request('/register', {
       method: 'POST',
       body: JSON.stringify({
         email,
         password,
-        confirmPassword: password,
         nome,
-        telefone,
       }),
     });
-
-    this.token = response.session.access_token;
-    if (this.token) {
-      localStorage.setItem('token', this.token);
-    }
 
     return response;
   }
@@ -118,23 +120,8 @@ class AuthService {
 
     try {
       console.log('getCurrentUser: Making request to /api/me with token:', this.token);
-      
-      // Use /api/me endpoint to get user with company data
-      const response = await fetch('/api/me', {
-        headers: {
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      console.log('getCurrentUser: Response status:', response.status);
-
-      if (!response.ok) {
-        console.error('getCurrentUser: Response not ok:', response.status, response.statusText);
-        throw new Error('Failed to get user data');
-      }
-
-      const userData = await response.json();
+      const { apiRequest } = await import('@/lib/queryClient');
+      const userData = await apiRequest('/me', { method: 'GET' });
       console.log('getCurrentUser: Raw response data:', userData);
       
       // Ensure we have the complete user structure with empresa data

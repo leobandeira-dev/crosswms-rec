@@ -80,7 +80,7 @@ interface EmpresaAPIResponse {
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
-  const { user, loading, signIn } = useAuth();
+  const { user, loading, signIn, setUser } = useAuth();
   const [selectedUserType, setSelectedUserType] = useState<'transportador' | 'cliente' | 'fornecedor' | ''>('');
   const [showAccessForm, setShowAccessForm] = useState(false);
   const [accessMode, setAccessMode] = useState<'login' | 'cadastro' | 'reset-password' | 'new-password'>('login');
@@ -162,53 +162,20 @@ export default function LoginPage() {
     setMostrarSugestaoCadastro(false);
 
     try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password: senha,
-          tipo_usuario: selectedUserType
-        }),
-      });
+      // Usa o fluxo de autenticação centralizado
+      await signIn(email, senha);
+      // O redirecionamento será tratado pelo useEffect ao detectar user
+    } catch (error: any) {
+      // Em caso de erro, limpa qualquer token antigo para evitar acesso indevido
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        
-        // Redirecionamento imediato e forçado
-        const redirectUrl = data.user.tipo_usuario === 'super_admin' 
-          ? '/admin/dashboard' 
-          : data.user.tipo_usuario === 'transportador'
-          ? '/dashboard'
-          : data.user.tipo_usuario === 'cliente'
-          ? '/cliente/dashboard'
-          : data.user.tipo_usuario === 'fornecedor'
-          ? '/fornecedor/dashboard'
-          : '/dashboard';
-          
-        // Combinação de métodos para garantir redirecionamento
-        setLocation(redirectUrl);
-        
-        // Timeout como fallback caso setLocation falhe
-        setTimeout(() => {
-          window.location.href = redirectUrl;
-        }, 100);
-        
-        return;
-      } else {
-        setErroLogin(data.error || 'Erro ao fazer login');
-        
-        if (data.error === 'Usuário não encontrado') {
-          setMostrarSugestaoCadastro(true);
-        }
+      const errorMessage = error?.message || 'Erro ao fazer login';
+      setErroLogin(errorMessage);
+      if (errorMessage === 'Usuário não encontrado') {
+        setMostrarSugestaoCadastro(true);
       }
-    } catch (error) {
-      setErroLogin('Erro de conexão. Tente novamente.');
     } finally {
       setIsLoading(false);
     }

@@ -206,3 +206,60 @@ await fetch('/api/xml/fetch-from-logistica', {
   body: JSON.stringify({ chaveNotaFiscal, cnpj, token })
 });
 ```
+
+## Integração: Meu Danfe (Buscar XML e gerar DANFE)
+
+Endpoint backend Node-only para buscar o XML oficial via API do Meu Danfe (compatível com Windows, sem Python).
+
+- URL: `POST /api/xml/fetch-from-meudanfe`
+- Headers: `Content-Type: application/json`
+- Body:
+  - `chaveNotaFiscal` (string, obrigatório, 44 dígitos)
+
+### Endpoint Batch
+
+- URL: `POST /api/xml/fetch-from-meudanfe/batch`
+- Headers: `Content-Type: application/json`
+- Body:
+  - `keys` (array de strings, obrigatório) — cada item deve ser uma chave com 44 dígitos
+- Resposta:
+  - `{ success: true, items: [ { key, success, xml_content?, error?, code?, status? } ] }`
+- Observações:
+  - O servidor processa em lotes com concorrência controlada (tamanho do lote padrão: 5).
+  - Em caso de erro por chave (saldo insuficiente, api key inválida, sem XML), o item retorna `success: false` com `error` e `code` específicos.
+  - Requer `MEUDANFE_API_KEY` configurada no `.env`.
+
+### Configuração (.env)
+
+Adicione ao `.env`:
+
+```
+MEUDANFE_API_KEY=SEU_TOKEN_MEUDANFE
+```
+
+Opcional (cliente/Vite), apenas se fizer chamadas diretas do navegador:
+
+```
+VITE_MEUDANFE_API_KEY=SEU_TOKEN_MEUDANFE
+```
+
+### Fluxo da rota
+
+- Valida a chave (44 dígitos) e a presença de `MEUDANFE_API_KEY`.
+- Faz `PUT https://api.meudanfe.com.br/v2/fd/add/{chave}` com header `Api-Key`.
+- Faz `GET https://api.meudanfe.com.br/v2/fd/get/xml/{chave}` com header `Api-Key`.
+- Extrai o XML do corpo em formatos comuns (`xml`, `data.xml`, `result.xml`, etc.).
+- Retorna:
+  - Sucesso: `{ success: true, xml: "<NFe...>" }`
+  - Falhas mapeadas: `invalid_key`, `meudanfe_api_key_missing`, `meudanfe_insufficient_balance` (402), `meudanfe_invalid_api_key` (401/403), `meudanfe_no_xml`.
+
+### Teste rápido (PowerShell / Windows)
+
+```
+$env:MEUDANFE_API_KEY="SEU_TOKEN_MEUDANFE"; npm run dev
+Invoke-RestMethod -Uri 'http://localhost:3002/api/xml/fetch-from-meudanfe' -Method POST -Body '{"chaveNotaFiscal":"<44-digitos>"}' -ContentType 'application/json'
+```
+
+### Documentação oficial
+
+Referência: `https://meudanfe.com.br/documentacao.php`

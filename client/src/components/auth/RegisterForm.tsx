@@ -10,8 +10,11 @@ type RegisterFormData = {
   nome: string;
   email: string;
   telefone?: string;
-  cnpj: string;
+  cnpj?: string;
   password: string;
+  tipo_usuario: 'transportador' | 'cliente' | 'fornecedor' | 'super_admin';
+  razao_social?: string;
+  operador_logistico_cnpj?: string;
 };
 
 interface RegisterFormProps {
@@ -31,7 +34,16 @@ export const RegisterForm = ({ setError, setSuccess, setActiveTab }: RegisterFor
     setSuccess(null);
     
     try {
-      await signUp(data.email, data.password, data.nome, data.telefone, data.cnpj);
+      await signUp(
+        data.email,
+        data.password,
+        data.nome,
+        data.telefone,
+        data.cnpj,
+        data.tipo_usuario,
+        data.razao_social,
+        data.operador_logistico_cnpj
+      );
       setActiveTab('login');
       setSuccess('Cadastro realizado com sucesso! Enviamos um email para confirmação. Por favor, verifique sua caixa de entrada (e a pasta de spam) para ativar sua conta.');
     } catch (error: any) {
@@ -77,21 +89,47 @@ export const RegisterForm = ({ setError, setSuccess, setActiveTab }: RegisterFor
         )}
       </div>
       <div className="space-y-2">
+        <Label htmlFor="tipo_usuario">Tipo de Usuário</Label>
+        <select
+          id="tipo_usuario"
+          className="border rounded p-2 w-full"
+          {...register('tipo_usuario', { required: 'Tipo de usuário é obrigatório' })}
+          defaultValue={'transportador'}
+        >
+          <option value="transportador">Transportador</option>
+          <option value="cliente">Cliente</option>
+          <option value="fornecedor">Fornecedor</option>
+        </select>
+        {errors.tipo_usuario && (
+          <p className="text-sm text-red-500">{errors.tipo_usuario.message}</p>
+        )}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="razao_social">Razão Social da Empresa</Label>
+        <Input
+          id="razao_social"
+          placeholder="Empresa LTDA"
+          {...register('razao_social')}
+        />
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="cnpj">CNPJ da Empresa</Label>
         <Input
           id="cnpj"
           placeholder="00.000.000/0000-00"
-          {...register('cnpj', { 
-            required: 'CNPJ é obrigatório',
-            minLength: {
-              value: 14,
-              message: 'CNPJ deve ter pelo menos 14 dígitos'
-            }
-          })}
+          {...register('cnpj')}
         />
         {errors.cnpj && (
           <p className="text-sm text-red-500">{errors.cnpj.message}</p>
         )}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="operador_logistico_cnpj">CNPJ do Operador Logístico (se aplicável)</Label>
+        <Input
+          id="operador_logistico_cnpj"
+          placeholder="00.000.000/0000-00"
+          {...register('operador_logistico_cnpj')}
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="telefone">Telefone (opcional)</Label>
