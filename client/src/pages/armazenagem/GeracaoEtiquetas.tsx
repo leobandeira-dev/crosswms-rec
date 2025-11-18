@@ -572,7 +572,11 @@ const GeracaoEtiquetas = () => {
   useEffect(() => {
     const generateQRCode = async () => {
       try {
-        const volumeId = generateVolumeId(notaFiscal || '111007', 1, parseInt(quantidadeVolumes?.toString() || '1'))
+        if (!notaFiscal) {
+          setQrCodeDataURL('')
+          return
+        }
+        const volumeId = generateVolumeId(notaFiscal, 1, parseInt(quantidadeVolumes?.toString() || '1'))
         const qrDataURL = await QRCode.toDataURL(volumeId, {
           width: 64,
           margin: 1,
@@ -1581,7 +1585,7 @@ const GeracaoEtiquetas = () => {
     pdf.setFont('helvetica', 'normal')
     pdf.setTextColor(100, 100, 100) // Gray text like preview
     // Use the proper database ID format that matches the database record
-    const volumeId = volume.id || volume.codigo || generateVolumeId(notaFiscal || '111007', Number(volume.numeroVolume) || 1, parseInt(quantidadeVolumes?.toString() || '1'))
+    const volumeId = volume.id || volume.codigo || (notaFiscal ? generateVolumeId(notaFiscal, Number(volume.numeroVolume) || 1, parseInt(quantidadeVolumes?.toString() || '1')) : '—')
     pdf.text(`ID: ${volumeId}`, margin + 3, currentY)
     currentY += isSmallFormat ? 3 : 4
     
@@ -2563,7 +2567,7 @@ const GeracaoEtiquetas = () => {
                   </div>
 
                   <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                    <strong>ID Atual:</strong> {generateVolumeId(notaFiscal || '111007', 1, parseInt(quantidadeVolumes?.toString() || '1'))}
+                    <strong>ID Atual:</strong> {notaFiscal ? generateVolumeId(notaFiscal, 1, parseInt(quantidadeVolumes?.toString() || '1')) : 'Informe o número da NF para gerar ID'}
                   </div>
                 </div>
 
@@ -2612,7 +2616,7 @@ const GeracaoEtiquetas = () => {
                         
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1">
-                            <div className="text-sm text-gray-600 mb-2">ID: {generateVolumeId(notaFiscal || '111007', 1, parseInt(quantidadeVolumes?.toString() || '1'))}</div>
+                            <div className="text-sm text-gray-600 mb-2">ID: {notaFiscal ? generateVolumeId(notaFiscal, 1, parseInt(quantidadeVolumes?.toString() || '1')) : '—'}</div>
                             
                             {/* NF - Black background with white text */}
                             <div className="bg-black text-white px-3 py-2 rounded mb-2">
@@ -2637,7 +2641,7 @@ const GeracaoEtiquetas = () => {
                                 <div className="text-xs text-gray-500">QR</div>
                               )}
                             </div>
-                            <div className="text-xs font-mono">{generateVolumeId(notaFiscal || '111007', 1, parseInt(quantidadeVolumes?.toString() || '1'))}</div>
+                            <div className="text-xs font-mono">{notaFiscal ? generateVolumeId(notaFiscal, 1, parseInt(quantidadeVolumes?.toString() || '1')) : ''}</div>
                           </div>
                         </div>
 
@@ -2713,7 +2717,7 @@ const GeracaoEtiquetas = () => {
                             
                             {/* Data de Criação da Etiqueta */}
                             <div className="text-xs text-gray-600 mb-1">
-                              Entrada: {formatCreationDate(generateVolumeId(notaFiscal || '111007', 1, parseInt(quantidadeVolumes?.toString() || '1')))}
+                              Entrada: {notaFiscal ? formatCreationDate(generateVolumeId(notaFiscal, 1, parseInt(quantidadeVolumes?.toString() || '1'))) : '—'}
                             </div>
                             
                             {/* Quantidade de Volumes - Black background with white text */}
@@ -2768,7 +2772,7 @@ const GeracaoEtiquetas = () => {
                         
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1">
-                            <div className="text-sm text-gray-600">ID: {generateVolumeId(notaFiscal || '111007', 1, parseInt(quantidadeVolumes?.toString() || '1'))}</div>
+                            <div className="text-sm text-gray-600">ID: {notaFiscal ? generateVolumeId(notaFiscal, 1, parseInt(quantidadeVolumes?.toString() || '1')) : '—'}</div>
                             <div className="bg-yellow-200 text-black px-2 py-1 text-lg font-bold mt-1">
                               NF: {notaFiscal}
                             </div>
@@ -2857,7 +2861,7 @@ const GeracaoEtiquetas = () => {
                             
                             {/* Data de Criação da Etiqueta */}
                             <div className="text-xs text-gray-600 mb-1">
-                              Entrada: {formatCreationDate(generateVolumeId(notaFiscal || '111007', 1, parseInt(quantidadeVolumes?.toString() || '1')))}
+                              Entrada: {notaFiscal ? formatCreationDate(generateVolumeId(notaFiscal, 1, parseInt(quantidadeVolumes?.toString() || '1'))) : '—'}
                             </div>
                             
                             {/* Volume - Black background with white text like Cidade/UF */}

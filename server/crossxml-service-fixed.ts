@@ -31,6 +31,7 @@ export class CrossXMLService {
   async fetchNFeXML(chaveNotaFiscal: string): Promise<CrossXMLResponse> {
     try {
       console.log(`[CrossXML Fixed] Buscando chave: ${chaveNotaFiscal}`);
+      const allowDemo = (process.env.ALLOW_DEMO_KEYS === 'true');
 
       if (!CrossXMLService.validateChaveNFe(chaveNotaFiscal)) {
         return {
@@ -42,11 +43,11 @@ export class CrossXMLService {
       }
 
       // Para chaves específicas com dados reais armazenados
-      if (chaveNotaFiscal === '42250485179240000239550020004175361171503396') {
+      if (allowDemo && chaveNotaFiscal === '42250485179240000239550020004175361171503396') {
         return this.getRealCorsulData(chaveNotaFiscal);
       }
       
-      if (chaveNotaFiscal === '35250513516247000107550010000113401146202508') {
+      if (allowDemo && chaveNotaFiscal === '35250513516247000107550010000113401146202508') {
         return this.getRealSinalizacaoData(chaveNotaFiscal);
       }
 

@@ -29,6 +29,7 @@ export class CrossXMLService {
   async fetchNFeXML(chaveNotaFiscal: string): Promise<CrossXMLResponse> {
     try {
       console.log(`[CrossXML Real] Buscando chave: ${chaveNotaFiscal}`);
+      const allowDemo = (process.env.ALLOW_DEMO_KEYS === 'true');
 
       if (!CrossXMLService.validateChaveNFe(chaveNotaFiscal)) {
         return {
@@ -40,7 +41,7 @@ export class CrossXMLService {
       }
 
       // CORSUL - dados reais do XML fornecido pelo usuário
-      if (chaveNotaFiscal === '42250485179240000239550020004175361171503396') {
+      if (allowDemo && chaveNotaFiscal === '42250485179240000239550020004175361171503396') {
         console.log(`[CrossXML Real] Retornando dados CORSUL`);
         return {
           success: true,
@@ -89,7 +90,7 @@ export class CrossXMLService {
       }
 
       // REAL SINALIZACAO - dados reais da API NSDocs
-      if (chaveNotaFiscal === '35250513516247000107550010000113401146202508') {
+      if (allowDemo && chaveNotaFiscal === '35250513516247000107550010000113401146202508') {
         console.log(`[CrossXML Real] Retornando dados REAL SINALIZACAO`);
         return {
           success: true,

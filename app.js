@@ -100,7 +100,7 @@ app.post('/api/xml/fetch-from-logistica', async (req, res) => {
       });
     }
 
-    console.log(`[API Logística] Buscando NFe: ${chaveNotaFiscal}`);
+  console.log(`[API Logística] Buscando NFe: ${chaveNotaFiscal}`);
     
     // Base de dados de NFes reais conhecidas  
     const nfesReaisConhecidas = {
@@ -141,8 +141,9 @@ app.post('/api/xml/fetch-from-logistica', async (req, res) => {
     // Verificar se temos dados reais para esta chave NFe
     let extractedData;
     let isDataReal = false;
+    const allowDemo = process.env.ALLOW_DEMO_KEYS === 'true';
     
-    if (nfesReaisConhecidas[chaveNotaFiscal]) {
+    if (allowDemo && nfesReaisConhecidas[chaveNotaFiscal]) {
       // Usar dados reais conhecidos
       extractedData = nfesReaisConhecidas[chaveNotaFiscal];
       isDataReal = true;

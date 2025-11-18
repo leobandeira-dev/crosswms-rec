@@ -109,6 +109,8 @@ interface VolumeData {
   const [quaggaInitialized, setQuaggaInitialized] = useState(false);
   const quaggaContainerRef = useRef<HTMLDivElement>(null);
   const webcamRef = useRef<Webcam>(null);
+  // Ref para o campo da chave da NFe, para focar após cada inclusão/busca
+  const chaveInputRef = useRef<HTMLInputElement>(null);
 
   // Shared manual fields that apply to all invoices
   const [sharedFields, setSharedFields] = useState({
@@ -131,6 +133,8 @@ interface VolumeData {
   // Ao colar/teclar no campo de chave quando Auto adicionar está ativo, capturar automaticamente
   const handlePasteNFeKey = (e: React.ClipboardEvent<HTMLInputElement>) => {
     if (!autoAddToBatch) return;
+    // Evitar reentrância durante carregamentos para não travar o formulário
+    if (isApiLoading || isProcessing) return;
     const text = e.clipboardData.getData('text') || '';
     const cleaned = text.replace(/\D/g, '').trim();
     if (cleaned.length === 44) {
@@ -533,7 +537,20 @@ useEffect(() => {
           }
 
           // Store in temporary batch for document generation
-          setBatchInvoices(prev => [...prev, processedInvoice]);
+ // Bloqueio: não inserir se a chave 44 dígitos já existe no lote
+ {
+   const key = normalizeNFKey(processedInvoice?.chave_nota_fiscal);
+   const exists = key.length === 44 && batchInvoices.some(inv => normalizeNFKey(inv.chave_nota_fiscal) === key);
+   if (exists) {
+     toast({
+       title: 'NF já relacionada',
+       description: `Chave ${key} já está no lote (ERR_DUP_NF_KEY)`,
+       variant: 'destructive',
+     });
+   } else {
+     setBatchInvoices(prev => [...prev, processedInvoice]);
+   }
+ }
           
           // Store processed invoices for marketplace use
           const existingProcessed = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
@@ -754,8 +771,28 @@ useEffect(() => {
         return processedInvoice;
       });
 
-      // Store in temporary batch for document generation
-      setBatchInvoices(processedBatch);
+      // Store in temporary batch for document generation (dedupe by NF key)
+ // Bloqueio em lote: ignora NFs cuja chave já existe no lote
+ {
+   const blocked = new Set<string>();
+   const filteredBatch = processedBatch.filter(inv => {
+     const key = normalizeNFKey(inv?.chave_nota_fiscal);
+     if (key.length === 44 && batchInvoices.some(ex => normalizeNFKey(ex.chave_nota_fiscal) === key)) {
+       blocked.add(key);
+       return false;
+     }
+     return true;
+   });
+   if (blocked.size > 0) {
+     toast({
+       title: 'NF já relacionada',
+       description: `Ignoradas ${blocked.size} nota(s) já no lote (ERR_DUP_NF_KEY)`,
+       variant: 'destructive',
+     });
+   }
+   const uniqueNew = dedupeInvoicesByKey(filteredBatch);
+   setBatchInvoices(prev => [...prev, ...uniqueNew]);
+ }
       
       // Store processed invoices for marketplace use
       const existingProcessed = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
@@ -978,7 +1015,20 @@ useEffect(() => {
       setBatchVolumeData(prev => [...prev, notaVolumeData]);
     }
 
-    setBatchInvoices(prev => [...prev, processedInvoice]);
+ // Bloqueio: não inserir se a chave 44 dígitos já existe no lote
+ {
+   const key = normalizeNFKey(processedInvoice?.chave_nota_fiscal);
+   const exists = key.length === 44 && batchInvoices.some(inv => normalizeNFKey(inv.chave_nota_fiscal) === key);
+   if (exists) {
+     toast({
+       title: 'NF já relacionada',
+       description: `Chave ${key} já está no lote (ERR_DUP_NF_KEY)`,
+       variant: 'destructive',
+     });
+   } else {
+     setBatchInvoices(prev => [...prev, processedInvoice]);
+   }
+ }
     const existingProcessed = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
     const updatedProcessed = [...existingProcessed, processedInvoice];
     localStorage.setItem('processedInvoices', JSON.stringify(updatedProcessed));
@@ -1024,8 +1074,28 @@ useEffect(() => {
       return processedInvoice;
     });
 
-    // Store in temporary batch for document generation
-    setBatchInvoices(processedBatch);
+    // Store in temporary batch for document generation (dedupe by NF key)
+ // Bloqueio em lote: ignora NFs cuja chave já existe no lote
+ {
+   const blocked = new Set<string>();
+   const filteredBatch = processedBatch.filter(inv => {
+     const key = normalizeNFKey(inv?.chave_nota_fiscal);
+     if (key.length === 44 && batchInvoices.some(ex => normalizeNFKey(ex.chave_nota_fiscal) === key)) {
+       blocked.add(key);
+       return false;
+     }
+     return true;
+   });
+   if (blocked.size > 0) {
+     toast({
+       title: 'NF já relacionada',
+       description: `Ignoradas ${blocked.size} nota(s) já no lote (ERR_DUP_NF_KEY)`,
+       variant: 'destructive',
+     });
+   }
+   const uniqueNew = dedupeInvoicesByKey(filteredBatch);
+   setBatchInvoices(prev => [...prev, ...uniqueNew]);
+ }
     
     // Store processed invoices for marketplace use (CRITICAL FOR API FLOW)
     const existingProcessed = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
@@ -1247,8 +1317,8 @@ useEffect(() => {
   };
 
   // Integração com Meu Danfe: PUT /fd/add/{Chave-Acesso}
-  const fetchNFeWithMeuDanfe = async (options?: { addToBatch?: boolean }) => {
-    const chave = (formData.chave_nota_fiscal || '').replace(/\D/g, '').trim();
+  const fetchNFeWithMeuDanfe = async (overrideKey?: string, options?: { addToBatch?: boolean }) => {
+    const chave = (overrideKey || formData.chave_nota_fiscal || '').replace(/\D/g, '').trim();
     if (!chave || chave.length !== 44) {
       toast({ title: 'Chave inválida', description: 'Informe 44 dígitos', variant: 'destructive' });
       return;
@@ -1325,6 +1395,8 @@ useEffect(() => {
       toast({ title: 'Erro de conexão', description: 'Falha ao conectar ao Meu Danfe', variant: 'destructive' });
     } finally {
       setIsApiLoading(false);
+      // Garantir que o campo de chave esteja pronto para a próxima inclusão
+      setTimeout(() => chaveInputRef.current?.focus(), 0);
     }
   };
   // (Removido) fetchXmlWithNSDocs
@@ -1474,7 +1546,20 @@ useEffect(() => {
           setBatchVolumeData(prev => [...prev, notaVolumeData]);
         }
 
-        setBatchInvoices(prev => [...prev, processedInvoice]);
+ // Bloqueio: não inserir se a chave 44 dígitos já existe no lote
+ {
+   const key = normalizeNFKey(processedInvoice?.chave_nota_fiscal);
+   const exists = key.length === 44 && batchInvoices.some(inv => normalizeNFKey(inv.chave_nota_fiscal) === key);
+   if (exists) {
+     toast({
+       title: 'NF já relacionada',
+       description: `Chave ${key} já está no lote (ERR_DUP_NF_KEY)`,
+       variant: 'destructive',
+     });
+   } else {
+     setBatchInvoices(prev => [...prev, processedInvoice]);
+   }
+ }
 
         const existingProcessed = JSON.parse(localStorage.getItem('processedInvoices') || '[]');
         const updatedProcessed = [...existingProcessed, processedInvoice];
@@ -1483,14 +1568,21 @@ useEffect(() => {
 
         setShowSuccessAnimation(true);
         setTimeout(() => setShowSuccessAnimation(false), 3000);
+        // Após adicionar ao lote, limpar campo de chave para próxima nota e focar
+        setFormData(prev => ({ ...prev, chave_nota_fiscal: '' }));
+        setTimeout(() => chaveInputRef.current?.focus(), 0);
       } else {
         // preenchimento silencioso do formulário
+        // Manter o campo pronto para próxima possível busca manual
+        setTimeout(() => chaveInputRef.current?.focus(), 0);
       }
     } catch (error) {
       console.error('[MeuDanfe] Falha ao processar XML:', error);
       toast({ title: 'Erro ao processar XML', description: 'Falha ao processar conteúdo do Meu Danfe', variant: 'destructive' });
     } finally {
       setIsProcessing(false);
+      // Garantir foco no campo mesmo em casos de erro
+      setTimeout(() => chaveInputRef.current?.focus(), 0);
     }
   };
 
@@ -1601,7 +1693,7 @@ useEffect(() => {
       // Se houver uma nota atual no formulário, mover para o mockup antes de preencher a nova
       enqueueCurrentInvoiceToBatch();
       // Adicionar a NFe via Meu Danfe e baixar o XML, preenchendo apenas o formulário
-      await fetchNFeWithMeuDanfe({ addToBatch: false });
+      await fetchNFeWithMeuDanfe(key, { addToBatch: false });
     } finally {
       setIsApiLoading(false);
     }
@@ -1808,7 +1900,7 @@ useEffect(() => {
         handleInputChange('chave_nota_fiscal', codeString);
         toast({ title: 'Código NFe detectado', description: codeString });
         // Buscar automaticamente na API Meu Danfe para preencher o formulário
-        void fetchNFeWithMeuDanfe({ addToBatch: false });
+        void fetchNFeWithMeuDanfe(codeString, { addToBatch: false });
       }
       return;
     }
@@ -1832,7 +1924,7 @@ useEffect(() => {
         handleInputChange('chave_nota_fiscal', extractedKey);
         toast({ title: 'Chave NFe extraída', description: extractedKey });
         // Buscar automaticamente na API Meu Danfe para preencher o formulário
-        void fetchNFeWithMeuDanfe({ addToBatch: false });
+        void fetchNFeWithMeuDanfe(extractedKey, { addToBatch: false });
       }
       return;
     }
@@ -3191,6 +3283,7 @@ useEffect(() => {
                   <div className="w-full">
                     <Input
                       id="chave_nota_fiscal"
+                      ref={chaveInputRef}
                       value={formData.chave_nota_fiscal}
                       onChange={(e) => handleInputChange('chave_nota_fiscal', e.target.value)}
                       onPaste={handlePasteNFeKey}
@@ -4043,7 +4136,7 @@ useEffect(() => {
                   
                   {/* List View Items */}
                   <div className="divide-y border-x border-b rounded-b-lg">
-                    {batchInvoices
+                    {getDisplayUniqueInvoices(batchInvoices)
                       .sort((a, b) => new Date(a.processedAt || 0).getTime() - new Date(b.processedAt || 0).getTime())
                       .map((invoice) => {
                         const notaCubagem = batchVolumeData.find(item => item.numeroNota === invoice.numero_nota);
@@ -4146,7 +4239,7 @@ useEffect(() => {
                         Total: {batchVolumeData.reduce((sum, nota) => sum + nota.totalM3, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m³
                       </div>
                       <div className="text-sm text-gray-500">
-                        {batchInvoices.length} nota(s) | {batchVolumeData.filter(n => n.volumes.length > 0).length} com cubagem
+                        {getDisplayUniqueInvoices(batchInvoices).length} nota(s) | {batchVolumeData.filter(n => n.volumes.length > 0).length} com cubagem
                       </div>
                     </div>
                     
@@ -4612,4 +4705,74 @@ export default NotasFiscaisEntrada;
       return;
     }
     handleEditInvoice(invoiceBatch[nextIndex], nextIndex);
+  };
+  const normalizeNFKey = (v?: string) => (v || '').replace(/\D/g, '').trim();
+  const upsertByNFKey = (prev: any[], invoice: any) => {
+    const key = normalizeNFKey(invoice.chave_nota_fiscal);
+    if (key && key.length === 44) {
+      const idx = prev.findIndex(inv => normalizeNFKey(inv.chave_nota_fiscal) === key);
+      if (idx !== -1) {
+        const updated = [...prev];
+        updated[idx] = { ...updated[idx], ...invoice };
+        return updated;
+      }
+    }
+    return [...prev, invoice];
+  };
+  const dedupeInvoicesByKey = (invoices: any[]) => {
+    const seen = new Map<string, number>();
+    const result: any[] = [];
+    for (const inv of invoices) {
+      const key = normalizeNFKey(inv.chave_nota_fiscal);
+      if (key && key.length === 44) {
+        if (seen.has(key)) {
+          const i = seen.get(key)!;
+          result[i] = { ...result[i], ...inv };
+        } else {
+          seen.set(key, result.length);
+          result.push(inv);
+        }
+      } else {
+        result.push(inv);
+      }
+    }
+    return result;
+  };
+
+  // For display: dedupe by NF key; if missing, fallback by número + emitente/destinatário + data
+  const getDisplayUniqueInvoices = (invoices: any[]) => {
+    const byKey = dedupeInvoicesByKey(invoices);
+    const seenByNum = new Map<string, number>();
+    const result: any[] = [];
+    for (const inv of byKey) {
+      const key = normalizeNFKey(inv.chave_nota_fiscal);
+      if (key && key.length === 44) {
+        result.push(inv);
+        continue;
+      }
+      const num = (inv.numero_nota || '').trim();
+      if (!num) {
+        result.push(inv);
+        continue;
+      }
+      const emitter = (inv.emitente_cnpj || '').trim();
+      const destinatario = (inv.destinatario_cnpj || '').trim();
+      const dateKey = (inv.data_hora_emissao || '').toString().slice(0, 10);
+      const composite = `${num}|${emitter}|${destinatario}|${dateKey}`;
+      if (seenByNum.has(composite)) {
+        const i = seenByNum.get(composite)!;
+        result[i] = { ...result[i], ...inv };
+      } else {
+        seenByNum.set(composite, result.length);
+        result.push(inv);
+      }
+    }
+    return result;
+  };
+  // Helpers de validação/checagem de chave NF
+  const isValidNFKey = (v?: string) => normalizeNFKey(v).length === 44;
+  const nfKeyExistsInBatch = (v?: string) => {
+    const key = normalizeNFKey(v);
+    if (key.length !== 44) return false;
+    return batchInvoices.some(inv => normalizeNFKey(inv.chave_nota_fiscal) === key);
   };
